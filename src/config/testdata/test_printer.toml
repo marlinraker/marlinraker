@@ -1,0 +1,26 @@
+[printer]
+bed_mesh = false
+print_volume = [220, 220, 240]
+
+[printer.extruder]
+min_temp = 0
+max_temp = 250
+min_extrude_temp = 180
+filament_diameter = 1.75
+
+[printer.heater_bed]
+min_temp = 0
+max_temp = 100
+
+[printer.gcode]
+send_m73 = true
+
+[macros.start_print]
+rename_existing = "start_base"
+gcode = """
+multiline
+macro
+"""
+
+[macros.test]
+gcode = "another test macro"

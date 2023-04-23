@@ -1,0 +1,18 @@
+#<include test_printer.toml>
+
+[web]
+bind_address = "1.2.3.4"
+port = 123
+cors_domains = ["domain"]
+
+[serial]
+port = "auto"
+baud_rate = 115200
+max_connection_attempts = 5
+connection_timeout = 5000
+
+[misc]
+octoprint_compat = true
+extended_logs = false
+report_velocity = false
+allowed_services = ["service1", "service2"]

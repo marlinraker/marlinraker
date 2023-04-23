@@ -1,0 +1,18 @@
+#<include printer.toml>
+
+[web]
+port = 7125
+cors_domains = []
+
+[serial]
+port = "auto"
+baud_rate = "auto"
+max_connection_attempts = 5
+connection_timeout = 5000
+
+[misc]
+octoprint_compat = true
+extended_logs = false
+report_velocity = false
+allowed_services = ["marlinraker", "crowsnest", "MoonCord",
+    "moonraker-telegram-bot", "KlipperScreen", "sonar", "webcamd"]

@@ -1,0 +1,2 @@
+Hello
+#<include subfolder/config2.txt>
