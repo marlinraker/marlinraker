@@ -12,7 +12,7 @@ import (
 type ServerFilesDeleteFileResult files.FileDeleteAction
 
 func ServerFilesDeleteFile(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
-	path, exists := params["path"].(string)
+	path, exists := params.GetString("path")
 	if !exists {
 		return nil, util.NewError("path param is required", 400)
 	}

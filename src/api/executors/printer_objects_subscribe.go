@@ -19,14 +19,9 @@ type PrinterObjectsSubscribeResult struct {
 
 func PrinterObjectsSubscribeHttp(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
 
-	connectionIdStr, exists := params["connection_id"].(string)
+	connectionId, exists := params.GetInt64("connection_id")
 	if !exists {
 		return nil, util.NewError("connection_id param is required", 400)
-	}
-
-	connectionId, err := strconv.ParseInt(connectionIdStr, 10, 0)
-	if err != nil {
-		return nil, err
 	}
 
 	connection, found := lo.Find(connections.GetConnections(), func(connection *connections.Connection) bool {

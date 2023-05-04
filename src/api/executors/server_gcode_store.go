@@ -12,12 +12,12 @@ type ServerGcodeStoreResult struct {
 
 func ServerGcodeStore(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 
-	count, exists := params["count"].(int)
+	count, exists := params.GetInt64("count")
 	if !exists {
 		count = 1000
 	}
 
-	start := len(gcode_store.GcodeStore) - count
+	start := len(gcode_store.GcodeStore) - int(count)
 	if start < 0 {
 		start = 0
 	}

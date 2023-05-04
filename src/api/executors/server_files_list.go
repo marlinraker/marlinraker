@@ -10,7 +10,7 @@ import (
 type ServerFilesResult = []files.File
 
 func ServerFilesList(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
-	root, exists := params["root"].(string)
+	root, exists := params.GetString("root")
 	if !exists {
 		root = "gcodes"
 	}
