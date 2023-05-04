@@ -150,8 +150,12 @@ func getCpuUsage(lastTimes cpuTimes, currentTimes cpuTimes) cpuUsage {
 }
 
 func getCpuTemp() (float64, error) {
+	return getCpuTempImpl("/sys/class/thermal/thermal_zone0/temp")
+}
 
-	tempBytes, err := os.ReadFile("/sys/class/thermal/thermal_zone0/temp")
+func getCpuTempImpl(thermalZonePath string) (float64, error) {
+
+	tempBytes, err := os.ReadFile(thermalZonePath)
 	if err != nil {
 		return 0, err
 	}

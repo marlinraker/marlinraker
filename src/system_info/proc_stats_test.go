@@ -63,7 +63,7 @@ func TestCpuUsage(t *testing.T) {
 }
 
 func TestCpuTemp(t *testing.T) {
-	_, err := getCpuTemp()
+	_, err := getCpuTempImpl("testdata/temp")
 	if err != nil {
 		t.Fatal(err)
 	}
