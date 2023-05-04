@@ -4,6 +4,7 @@ import (
 	"marlinraker-go/src/config"
 	"marlinraker-go/src/marlinraker"
 	"marlinraker-go/src/marlinraker/connections"
+	"net/http"
 )
 
 type ConfigFile struct {
@@ -17,7 +18,7 @@ type ServerConfigResult struct {
 	Files  []ConfigFile   `json:"files"`
 }
 
-func ServerConfig(*connections.Connection, Params) (any, error) {
+func ServerConfig(*connections.Connection, *http.Request, Params) (any, error) {
 	return ServerConfigResult{
 		Config: marlinraker.Config,
 		Orig:   marlinraker.Config,

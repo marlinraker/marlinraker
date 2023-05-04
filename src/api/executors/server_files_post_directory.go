@@ -3,14 +3,16 @@ package executors
 import (
 	"marlinraker-go/src/files"
 	"marlinraker-go/src/marlinraker/connections"
+	"marlinraker-go/src/util"
+	"net/http"
 )
 
 type ServerFilesPostDirectoryResult files.DirectoryAction
 
-func ServerFilesPostDirectory(_ *connections.Connection, params Params) (any, error) {
+func ServerFilesPostDirectory(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 	path, exists := params["path"].(string)
 	if !exists {
-		return nil, NewError("path param is required", 400)
+		return nil, util.NewError("path param is required", 400)
 	}
 
 	return files.CreateDir(path)

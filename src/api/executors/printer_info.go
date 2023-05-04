@@ -5,6 +5,7 @@ import (
 	"marlinraker-go/src/marlinraker"
 	"marlinraker-go/src/marlinraker/connections"
 	"marlinraker-go/src/system_info"
+	"net/http"
 	"os"
 )
 
@@ -20,7 +21,7 @@ type PrinterInfoResult struct {
 	ConfigFile      string                  `json:"config_file"`
 }
 
-func PrinterInfo(*connections.Connection, Params) (any, error) {
+func PrinterInfo(*connections.Connection, *http.Request, Params) (any, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err

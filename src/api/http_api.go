@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	log "github.com/sirupsen/logrus"
 	"marlinraker-go/src/api/executors"
+	"marlinraker-go/src/files"
+	"marlinraker-go/src/util"
 	"net/http"
 	"strings"
 )
@@ -33,25 +35,48 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) {
 	if executor == nil {
 		log.Errorln("No executor found for " + url)
 		writer.WriteHeader(404)
-		bytes, _ := json.Marshal(&Error{Code: 404, Message: "Not Found"})
-		_, _ = writer.Write(bytes)
+		bytes, err := json.Marshal(&Error{Code: 404, Message: "Not Found"})
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		if _, err = writer.Write(bytes); err != nil {
+			log.Error(err)
+		}
 		return
 	}
 
-	result, err := executor(nil, params)
+	result, err := executor(nil, request, params)
 	if err != nil {
 		log.Error(err)
 		code := 500
-		if executorError, isExecutorError := err.(*executors.ExecutorError); isExecutorError {
+		if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
 			code = executorError.Code
 		}
 		writer.WriteHeader(code)
-		bytes, _ := json.Marshal(ErrorResponse{Error: Error{Code: code, Message: err.Error()}})
-		_, _ = writer.Write(bytes)
+		bytes, err := json.Marshal(ErrorResponse{Error: Error{Code: code, Message: err.Error()}})
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		if _, err = writer.Write(bytes); err != nil {
+			log.Error(err)
+		}
+		return
+	}
+
+	var bytes []byte
+	switch result.(type) {
+	case files.FileUploadAction:
+		bytes, err = json.Marshal(result)
+	default:
+		bytes, err = json.Marshal(ResultResponse{result})
+	}
+	if err != nil {
+		log.Error(err)
 		return
 	}
 
 	writer.WriteHeader(200)
-	bytes, _ := json.Marshal(ResultResponse{Result: result})
 	_, _ = writer.Write(bytes)
 }

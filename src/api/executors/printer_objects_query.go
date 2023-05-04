@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"marlinraker-go/src/marlinraker/connections"
 	"marlinraker-go/src/printer_objects"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -13,7 +14,7 @@ type PrinterObjectsQueryResult struct {
 	Status    map[string]printer_objects.QueryResult `json:"status"`
 }
 
-func PrinterObjectsQuery(_ *connections.Connection, params Params) (any, error) {
+func PrinterObjectsQuery(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 
 	results := PrinterObjectsQueryResult{
 		EventTime: float64(time.Now().UnixMilli()) / 1000.0,

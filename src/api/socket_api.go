@@ -7,6 +7,7 @@ import (
 	"marlinraker-go/src/api/executors"
 	"marlinraker-go/src/marlinraker/connections"
 	"marlinraker-go/src/printer_objects"
+	"marlinraker-go/src/util"
 	"net/http"
 )
 
@@ -63,31 +64,42 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) {
 		executor := socketExecutors[request.Method]
 		if executor == nil {
 			log.Errorln("No executor found for " + request.Method)
-			_ = connection.WriteJson(&RpcErrorResponse{
+			err = connection.WriteJson(&RpcErrorResponse{
 				Error: Error{404, "Not Found"},
 				Rpc:   request.Rpc,
 			})
+			if err != nil {
+				log.Error(err)
+			}
 			continue
 		}
 
-		result, err := executor(connection, request.Params)
+		result, err := executor(connection, nil, request.Params)
 		if err != nil {
 			log.Error(err)
 			code := 500
-			if executorError, isExecutorError := err.(*executors.ExecutorError); isExecutorError {
+			if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
 				code = executorError.Code
 			}
-			_ = connection.WriteJson(&RpcErrorResponse{
+			err = connection.WriteJson(&RpcErrorResponse{
 				Error: Error{code, err.Error()},
 				Rpc:   request.Rpc,
 			})
+			if err != nil {
+				log.Error(err)
+			}
 			continue
 		}
 
-		_ = connection.WriteJson(&RpcResultResponse{request.Rpc, result})
+		err = connection.WriteJson(&RpcResultResponse{request.Rpc, result})
+		if err != nil {
+			log.Error(err)
+		}
 	}
 
-	_ = socket.Close()
+	if err = socket.Close(); err != nil {
+		log.Error(err)
+	}
 	connections.UnregisterConnection(connection)
 	printer_objects.Unsubscribe(connection)
 }

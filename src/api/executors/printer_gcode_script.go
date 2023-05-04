@@ -4,15 +4,17 @@ import (
 	"fmt"
 	"marlinraker-go/src/marlinraker"
 	"marlinraker-go/src/marlinraker/connections"
+	"marlinraker-go/src/util"
+	"net/http"
 )
 
-func PrinterGcodeScript(_ *connections.Connection, params Params) (any, error) {
+func PrinterGcodeScript(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 	script, exists := params["script"]
 	if !exists {
-		return nil, NewError("script param is required", 400)
+		return nil, util.NewError("script param is required", 400)
 	}
 	if marlinraker.Printer == nil {
-		return nil, NewError("printer not online", 500)
+		return nil, util.NewError("printer not online", 500)
 	}
 	ch, err := marlinraker.Printer.QueueGcode(fmt.Sprintf("%v", script), false, false)
 	if err != nil {

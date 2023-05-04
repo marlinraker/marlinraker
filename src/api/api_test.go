@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/websocket"
@@ -18,158 +17,11 @@ import (
 	"marlinraker-go/src/marlinraker/temp_store"
 	"marlinraker-go/src/printer_objects"
 	"marlinraker-go/src/system_info"
-	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 )
-
-func testHttp[Result any](t *testing.T, method string, endpoint string, params executors.Params,
-	f func(*testing.T, *httptest.ResponseRecorder, *Result, *Error)) {
-	t.Run(method+endpoint, func(t *testing.T) {
-
-		urlQuery, err := url.Parse(endpoint)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		values := urlQuery.Query()
-		for param, value := range params {
-			values.Set(param, fmt.Sprintf("%v", value))
-		}
-		urlQuery.RawQuery = values.Encode()
-
-		request, _ := http.NewRequest(method, urlQuery.String(), nil)
-		recorder := httptest.NewRecorder()
-		handleHttp(recorder, request)
-
-		var errorResponse ErrorResponse
-		err = json.Unmarshal(recorder.Body.Bytes(), &errorResponse)
-		if err != nil {
-			t.Fatal(err)
-			return
-		}
-		if errorResponse.Error.Code > 0 {
-			f(t, recorder, nil, &errorResponse.Error)
-			return
-		}
-
-		var response struct {
-			Result Result `json:"result"`
-		}
-		err = json.Unmarshal(recorder.Body.Bytes(), &response)
-		if err != nil {
-			t.Fatal(err)
-			return
-		}
-		f(t, recorder, &response.Result, nil)
-	})
-}
-
-func testSocket[Result any](t *testing.T, method string, params executors.Params, f func(*testing.T, *Result, *Error)) {
-	t.Run(method, func(t *testing.T) {
-
-		server := httptest.NewServer(http.HandlerFunc(handleSocket))
-		defer server.Close()
-		socketUrl := "ws" + server.URL[4:]
-
-		socket, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func(socket *websocket.Conn) {
-			_ = socket.Close()
-		}(socket)
-
-		request := RpcRequest{
-			Rpc: Rpc{
-				JsonRpc: "2.0",
-				Id:      0,
-			},
-			Method: method,
-			Params: params,
-		}
-
-		{
-			data, err := json.Marshal(request)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			err = socket.WriteMessage(websocket.TextMessage, data)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-
-		{
-			_, data, err := socket.ReadMessage()
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			var errorResponse RpcErrorResponse
-			err = json.Unmarshal(data, &errorResponse)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if errorResponse.Error.Code > 0 {
-				f(t, nil, &errorResponse.Error)
-				return
-			}
-
-			var response struct {
-				Result Result `json:"result"`
-			}
-			err = json.Unmarshal(data, &response)
-			if err != nil {
-				t.Fatal(err)
-			}
-			f(t, &response.Result, nil)
-		}
-	})
-}
-
-func testAll[Result any](t *testing.T, rpcMethod string, httpMethod string, httpUrl string, params executors.Params,
-	f func(*testing.T, *httptest.ResponseRecorder, *Result, *Error)) {
-
-	testSocket(t, rpcMethod, params, func(t *testing.T, result *Result, error *Error) {
-		f(t, nil, result, error)
-	})
-	testHttp(t, httpMethod, httpUrl, params, f)
-}
-
-func makeConnection(t *testing.T) (*websocket.Conn, int) {
-
-	server := httptest.NewServer(http.HandlerFunc(handleSocket))
-	defer server.Close()
-	socketUrl := "ws" + server.URL[4:]
-
-	socket, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = socket.WriteJSON(RpcRequest{
-		Rpc:    Rpc{JsonRpc: "2.0", Id: 42},
-		Method: "server.connection.identify",
-		Params: executors.Params{"client_name": "", "version": "", "type": "", "url": ""},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var response RpcResultResponse
-	err = socket.ReadJSON(&response)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	connectionId := response.Result.(map[string]any)["connection_id"].(float64)
-	return socket, int(connectionId)
-}
 
 type TestObject struct{}
 
@@ -604,4 +456,36 @@ func TestApi(t *testing.T) {
 			Action: "move_file",
 		}, cmpopts.IgnoreFields(files.ActionItem{}, "Modified", "Size"))
 	})
+
+	testFileUpload(t, "/server/files/upload", map[string]string{
+		"root": "config",
+		"path": "test/path",
+	}, "file.txt", "testdata/test_upload.txt",
+		func(t *testing.T, recorder *httptest.ResponseRecorder, result *executors.ServerFilesUploadResult, error *Error) {
+
+			if error != nil {
+				t.Fatal(error)
+			}
+
+			assert.DeepEqual(t, result, &executors.ServerFilesUploadResult{
+				Item: files.ActionItem{
+					Path:        "test/path/file.txt",
+					Root:        "config",
+					Size:        15,
+					Permissions: "rw",
+				},
+				Action: "create_file",
+			}, cmpopts.IgnoreFields(files.ActionItem{}, "Modified"))
+
+			filePath, err := filepath.Abs("testdata/config/test/path/file.txt")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			contents, err := afero.ReadFile(files.Fs, filePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assert.Equal(t, string(contents), "this is a test\n")
+		})
 }

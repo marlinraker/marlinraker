@@ -18,7 +18,7 @@ type Error struct {
 	Message string `json:"message"`
 }
 
-type Executor func(*connections.Connection, executors.Params) (any, error)
+type Executor func(*connections.Connection, *http.Request, executors.Params) (any, error)
 
 var socketExecutors = map[string]Executor{
 	"machine.proc_stats":            executors.MachineProcStats,
@@ -33,16 +33,16 @@ var socketExecutors = map[string]Executor{
 	"server.config":                 executors.ServerConfig,
 	"server.connection.identify":    executors.ServerConnectionIdentify,
 	"server.database.list":          executors.ServerDatabaseList,
+	"server.files.delete_directory": executors.ServerFilesDeleteDirectory,
+	"server.files.get_directory":    executors.ServerFilesGetDirectory,
 	"server.files.list":             executors.ServerFilesList,
+	"server.files.move":             executors.ServerFilesMove,
+	"server.files.post_directory":   executors.ServerFilesPostDirectory,
 	"server.files.roots":            executors.ServerFilesRoots,
 	"server.gcode_store":            executors.ServerGcodeStore,
 	"server.history.list":           executors.ServerHistoryList,
 	"server.info":                   executors.ServerInfo,
 	"server.temperature_store":      executors.ServerTemperatureStore,
-	"server.files.get_directory":    executors.ServerFilesGetDirectory,
-	"server.files.post_directory":   executors.ServerFilesPostDirectory,
-	"server.files.delete_directory": executors.ServerFilesDeleteDirectory,
-	"server.files.move":             executors.ServerFilesMove,
 }
 
 var httpExecutors = map[string]map[string]Executor{
@@ -55,13 +55,13 @@ var httpExecutors = map[string]map[string]Executor{
 		"/printer/objects/query":    executors.PrinterObjectsQuery,
 		"/server/config":            executors.ServerConfig,
 		"/server/database/list":     executors.ServerDatabaseList,
+		"/server/files/directory":   executors.ServerFilesGetDirectory,
 		"/server/files/list":        executors.ServerFilesList,
 		"/server/files/roots":       executors.ServerFilesRoots,
 		"/server/gcode_store":       executors.ServerGcodeStore,
 		"/server/history/list":      executors.ServerHistoryList,
 		"/server/info":              executors.ServerInfo,
 		"/server/temperature_store": executors.ServerTemperatureStore,
-		"/server/files/directory":   executors.ServerFilesGetDirectory,
 	},
 	"POST": {
 		"/printer/firmware_restart":  executors.PrinterFirmwareRestart,
@@ -69,6 +69,7 @@ var httpExecutors = map[string]map[string]Executor{
 		"/printer/objects/subscribe": executors.PrinterObjectsSubscribeHttp,
 		"/server/files/directory":    executors.ServerFilesPostDirectory,
 		"/server/files/move":         executors.ServerFilesMove,
+		"/server/files/upload":       executors.ServerFilesUpload,
 	},
 	"DELETE": {
 		"/server/files/directory": executors.ServerFilesDeleteDirectory,

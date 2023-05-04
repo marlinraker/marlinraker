@@ -5,6 +5,7 @@ import (
 	"marlinraker-go/src/files"
 	"marlinraker-go/src/marlinraker"
 	"marlinraker-go/src/marlinraker/connections"
+	"net/http"
 )
 
 type ServerInfoResult struct {
@@ -22,7 +23,7 @@ type ServerInfoResult struct {
 	Type                      string   `json:"type"`
 }
 
-func ServerInfo(*connections.Connection, Params) (any, error) {
+func ServerInfo(*connections.Connection, *http.Request, Params) (any, error) {
 	return ServerInfoResult{
 		KlippyConnected:           true,
 		KlippyState:               string(marlinraker.State),

@@ -3,13 +3,14 @@ package executors
 import (
 	"marlinraker-go/src/marlinraker/connections"
 	"marlinraker-go/src/marlinraker/gcode_store"
+	"net/http"
 )
 
 type ServerGcodeStoreResult struct {
 	GcodeStore []gcode_store.GcodeLog `json:"gcode_store"`
 }
 
-func ServerGcodeStore(_ *connections.Connection, params Params) (any, error) {
+func ServerGcodeStore(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 
 	count, exists := params["count"].(int)
 	if !exists {

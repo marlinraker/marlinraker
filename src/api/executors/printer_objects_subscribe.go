@@ -5,6 +5,8 @@ import (
 	"github.com/samber/lo"
 	"marlinraker-go/src/marlinraker/connections"
 	"marlinraker-go/src/printer_objects"
+	"marlinraker-go/src/util"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -15,11 +17,11 @@ type PrinterObjectsSubscribeResult struct {
 	Status    map[string]printer_objects.QueryResult `json:"status"`
 }
 
-func PrinterObjectsSubscribeHttp(connection *connections.Connection, params Params) (any, error) {
+func PrinterObjectsSubscribeHttp(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
 
 	connectionIdStr, exists := params["connection_id"].(string)
 	if !exists {
-		return nil, NewError("connection_id param is required", 400)
+		return nil, util.NewError("connection_id param is required", 400)
 	}
 
 	connectionId, err := strconv.ParseInt(connectionIdStr, 10, 0)
@@ -32,7 +34,7 @@ func PrinterObjectsSubscribeHttp(connection *connections.Connection, params Para
 	})
 
 	if !found {
-		return nil, NewError("connection with id "+strconv.Itoa(int(connectionId))+" does not exist", 400)
+		return nil, util.NewError("connection with id "+strconv.Itoa(int(connectionId))+" does not exist", 400)
 	}
 
 	subscriptions := make(map[string][]string)
@@ -51,10 +53,10 @@ func PrinterObjectsSubscribeHttp(connection *connections.Connection, params Para
 	return subscribe(connection, subscriptions)
 }
 
-func PrinterObjectsSubscribeSocket(connection *connections.Connection, params Params) (any, error) {
+func PrinterObjectsSubscribeSocket(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
 	objects, exist := params["objects"].(map[string]any)
 	if !exist {
-		return nil, NewError("objects param is required", 400)
+		return nil, util.NewError("objects param is required", 400)
 	}
 	subscriptions := make(map[string][]string)
 	for name, attributes := range objects {
