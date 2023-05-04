@@ -301,7 +301,10 @@ func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool)
 		if err != nil {
 			message := "!! Error: " + err.Error()
 			gcode_store.LogNow(message, gcode_store.Response)
-			_ = notification.Publish(notification.New("notify_gcode_response", []any{message}))
+			err = notification.Publish(notification.New("notify_gcode_response", []any{message}))
+			if err != nil {
+				log.Error(err)
+			}
 		}
 		return ch, err
 	}

@@ -39,6 +39,7 @@ var socketExecutors = map[string]Executor{
 	"server.files.move":             executors.ServerFilesMove,
 	"server.files.post_directory":   executors.ServerFilesPostDirectory,
 	"server.files.roots":            executors.ServerFilesRoots,
+	"server.files.zip":              executors.ServerFilesZip,
 	"server.gcode_store":            executors.ServerGcodeStore,
 	"server.history.list":           executors.ServerHistoryList,
 	"server.info":                   executors.ServerInfo,
@@ -70,6 +71,7 @@ var httpExecutors = map[string]map[string]Executor{
 		"/server/files/directory":    executors.ServerFilesPostDirectory,
 		"/server/files/move":         executors.ServerFilesMove,
 		"/server/files/upload":       executors.ServerFilesUpload,
+		"/server/files/zip":          executors.ServerFilesZip,
 	},
 	"DELETE": {
 		"/server/files/directory": executors.ServerFilesDeleteDirectory,
@@ -86,17 +88,21 @@ func (HttpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
 	switch {
 
 	case requestPath == "/websocket":
-		handleSocket(writer, request)
+		if err := handleSocket(writer, request); err != nil {
+			log.Error(err)
+		}
 
 	case isFilePath(requestPath) && (request.Method == "GET" || request.Method == "DELETE"):
 		if request.Method == "GET" {
 			handleFileDownload(writer, request)
-		} else {
-			handleFileDelete(writer, request)
+		} else if err := handleFileDelete(writer, request); err != nil {
+			log.Error(err)
 		}
 
 	default:
-		handleHttp(writer, request)
+		if err := handleHttp(writer, request); err != nil {
+			log.Error(err)
+		}
 	}
 }
 

@@ -519,4 +519,27 @@ func TestApi(t *testing.T) {
 			Action: "delete_file",
 		})
 	})
+
+	testAll(t, "server.files.zip", "POST", "/server/files/zip", executors.Params{
+		"dest": "config/archive.zip",
+		"items": []string{
+			"config/foo",
+			"config/foobar.txt",
+		},
+		"store_only": false,
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerFilesZipResult, error *Error) {
+
+		if error != nil {
+			t.Fatal(error)
+		}
+
+		assert.DeepEqual(t, result, &executors.ServerFilesZipResult{
+			Destination: files.ActionItem{
+				Path:        "archive.zip",
+				Root:        "config",
+				Permissions: "rw",
+			},
+			Action: "zip_files",
+		}, cmpopts.IgnoreFields(files.ActionItem{}, "Modified", "Size"))
+	})
 }

@@ -110,8 +110,8 @@ func Upload(rootName string, path string, checksum string, header *multipart.Fil
 		Action: actionName,
 	}
 
-	_ = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
-	return action, nil
+	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
+	return action, err
 }
 
 func DeleteFile(rootName string, path string) (FileDeleteAction, error) {
@@ -148,8 +148,8 @@ func DeleteFile(rootName string, path string) (FileDeleteAction, error) {
 		Action: "delete_file",
 	}
 
-	_ = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
-	return action, nil
+	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
+	return action, err
 }
 
 func calculateChecksum(filePath string) (string, error) {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -24,13 +25,22 @@ func testHttp[Result any](t *testing.T, method string, endpoint string, params e
 			t.Fatal(err)
 		}
 
-		values := urlQuery.Query()
-		for param, value := range params {
-			values.Set(param, fmt.Sprintf("%v", value))
+		var body io.Reader
+		if method == "GET" {
+			values := urlQuery.Query()
+			for param, value := range params {
+				values.Set(param, fmt.Sprintf("%v", value))
+			}
+			urlQuery.RawQuery = values.Encode()
+		} else {
+			bodyBytes, err := json.Marshal(params)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body = bytes.NewReader(bodyBytes)
 		}
-		urlQuery.RawQuery = values.Encode()
 
-		request, _ := http.NewRequest(method, urlQuery.String(), nil)
+		request, _ := http.NewRequest(method, urlQuery.String(), body)
 		recorder := httptest.NewRecorder()
 		HttpHandler{}.ServeHTTP(recorder, request)
 
@@ -60,7 +70,12 @@ func testHttp[Result any](t *testing.T, method string, endpoint string, params e
 func testSocket[Result any](t *testing.T, method string, params executors.Params, f func(*testing.T, *Result, *Error)) {
 	t.Run(method, func(t *testing.T) {
 
-		server := httptest.NewServer(http.HandlerFunc(handleSocket))
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			if err := handleSocket(writer, request); err != nil {
+				t.Fatal(err)
+			}
+		}))
+
 		defer server.Close()
 		socketUrl := "ws" + server.URL[4:]
 
@@ -132,7 +147,12 @@ func testAll[Result any](t *testing.T, rpcMethod string, httpMethod string, http
 
 func makeConnection(t *testing.T) (*websocket.Conn, int) {
 
-	server := httptest.NewServer(http.HandlerFunc(handleSocket))
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if err := handleSocket(writer, request); err != nil {
+			t.Fatal(err)
+		}
+	}))
+
 	defer server.Close()
 	socketUrl := "ws" + server.URL[4:]
 

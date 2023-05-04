@@ -38,11 +38,10 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func handleSocket(writer http.ResponseWriter, request *http.Request) {
+func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 	socket, err := upgrader.Upgrade(writer, request, nil)
 	if err != nil {
-		log.Error(err)
-		return
+		return err
 	}
 
 	connection := connections.RegisterConnection(socket)
@@ -97,9 +96,7 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
-	if err = socket.Close(); err != nil {
-		log.Error(err)
-	}
 	connections.UnregisterConnection(connection)
 	printer_objects.Unsubscribe(connection)
+	return socket.Close()
 }

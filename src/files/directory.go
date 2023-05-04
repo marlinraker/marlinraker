@@ -128,8 +128,8 @@ func CreateDir(path string) (DirectoryAction, error) {
 		Permissions: root.Permissions,
 	}
 
-	_ = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
-	return action, nil
+	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
+	return action, err
 }
 
 func DeleteDir(path string, force bool) (DirectoryAction, error) {
@@ -178,6 +178,6 @@ func DeleteDir(path string, force bool) (DirectoryAction, error) {
 		Permissions: root.Permissions,
 	}
 
-	_ = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
-	return action, nil
+	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
+	return action, err
 }
