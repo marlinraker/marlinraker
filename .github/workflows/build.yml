@@ -1,4 +1,4 @@
-name: Go test
+name: Go build & test
 
 on: [ push ]
 
@@ -13,6 +13,9 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: "1.20"
+
+      - name: Build
+        run: go build -v src/main.go
 
       - name: Test
         run: go test -v ./...
