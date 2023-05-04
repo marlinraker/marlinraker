@@ -32,7 +32,7 @@ func testHttp[Result any](t *testing.T, method string, endpoint string, params e
 
 		request, _ := http.NewRequest(method, urlQuery.String(), nil)
 		recorder := httptest.NewRecorder()
-		handleHttp(recorder, request)
+		HttpHandler{}.ServeHTTP(recorder, request)
 
 		var errorResponse ErrorResponse
 		err = json.Unmarshal(recorder.Body.Bytes(), &errorResponse)
@@ -204,7 +204,7 @@ func testFileUpload[Result any](t *testing.T, url string, fields map[string]stri
 		request.Header.Add("Content-Type", writer.FormDataContentType())
 
 		recorder := httptest.NewRecorder()
-		handleHttp(recorder, request)
+		HttpHandler{}.ServeHTTP(recorder, request)
 
 		var errorResponse ErrorResponse
 		if err := json.Unmarshal(recorder.Body.Bytes(), &errorResponse); err != nil {

@@ -8,7 +8,6 @@ import (
 	"marlinraker-go/src/marlinraker"
 	"marlinraker-go/src/marlinraker/connections"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -34,6 +33,7 @@ var socketExecutors = map[string]Executor{
 	"server.connection.identify":    executors.ServerConnectionIdentify,
 	"server.database.list":          executors.ServerDatabaseList,
 	"server.files.delete_directory": executors.ServerFilesDeleteDirectory,
+	"server.files.delete_file":      executors.ServerFilesDeleteFile,
 	"server.files.get_directory":    executors.ServerFilesGetDirectory,
 	"server.files.list":             executors.ServerFilesList,
 	"server.files.move":             executors.ServerFilesMove,
@@ -88,8 +88,12 @@ func (HttpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
 	case requestPath == "/websocket":
 		handleSocket(writer, request)
 
-	case isFileDownloadPath(requestPath):
-		handleFileDownload(writer, request)
+	case isFilePath(requestPath) && (request.Method == "GET" || request.Method == "DELETE"):
+		if request.Method == "GET" {
+			handleFileDownload(writer, request)
+		} else {
+			handleFileDelete(writer, request)
+		}
 
 	default:
 		handleHttp(writer, request)
@@ -106,15 +110,7 @@ func StartServer() {
 	}
 }
 
-func handleFileDownload(writer http.ResponseWriter, request *http.Request) {
-	path := strings.TrimPrefix(request.URL.Path, "/server/files/")
-	root := strings.Split(path, "/")[0]
-	file := strings.TrimPrefix(filepath.Clean(path[len(root):]), "/")
-	diskPath := filepath.Join(files.DataDir, root, file)
-	http.ServeFile(writer, request, diskPath)
-}
-
-func isFileDownloadPath(path string) bool {
+func isFilePath(path string) bool {
 	for _, root := range files.FileRoots {
 		if strings.HasPrefix(path, "/server/files/"+root.Name) {
 			return true

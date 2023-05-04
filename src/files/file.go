@@ -26,6 +26,11 @@ type FileUploadAction struct {
 	Action string     `json:"action"`
 }
 
+type FileDeleteAction struct {
+	Item   ActionItem `json:"item"`
+	Action string     `json:"action"`
+}
+
 func Upload(rootName string, path string, checksum string, header *multipart.FileHeader) (FileUploadAction, error) {
 
 	fileName := header.Filename
@@ -103,6 +108,44 @@ func Upload(rootName string, path string, checksum string, header *multipart.Fil
 			Permissions: root.Permissions,
 		},
 		Action: actionName,
+	}
+
+	_ = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
+	return action, nil
+}
+
+func DeleteFile(rootName string, path string) (FileDeleteAction, error) {
+
+	root, err := getRootByName(rootName)
+	if err != nil {
+		return FileDeleteAction{}, err
+	}
+
+	if !strings.Contains(root.Permissions, "w") {
+		return FileDeleteAction{}, errors.New("no write permissions")
+	}
+
+	diskPath := filepath.Join(DataDir, rootName, path)
+	stat, err := Fs.Stat(diskPath)
+	if err != nil {
+		return FileDeleteAction{}, err
+	}
+	if stat.IsDir() {
+		return FileDeleteAction{}, util.NewError(diskPath+" is a directory", 400)
+	}
+	if err := Fs.Remove(diskPath); err != nil {
+		return FileDeleteAction{}, err
+	}
+
+	action := FileDeleteAction{
+		Item: ActionItem{
+			Path:        path,
+			Root:        rootName,
+			Size:        0,
+			Modified:    0,
+			Permissions: "",
+		},
+		Action: "delete_file",
 	}
 
 	_ = notification.Publish(notification.New("notify_filelist_changed", []any{action}))

@@ -461,7 +461,7 @@ func TestApi(t *testing.T) {
 		"root": "config",
 		"path": "test/path",
 	}, "file.txt", "testdata/test_upload.txt",
-		func(t *testing.T, recorder *httptest.ResponseRecorder, result *executors.ServerFilesUploadResult, error *Error) {
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerFilesUploadResult, error *Error) {
 
 			if error != nil {
 				t.Fatal(error)
@@ -488,4 +488,35 @@ func TestApi(t *testing.T) {
 			}
 			assert.Equal(t, string(contents), "this is a test\n")
 		})
+
+	// create test file for deletion
+	testFilePath := filepath.Join(files.DataDir, "config/delete_me")
+	if err := afero.WriteFile(files.Fs, testFilePath, []byte("delete me"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	testAll(t, "server.files.delete_file", "DELETE", "/server/files/config/delete_me", executors.Params{
+		"path": "config/delete_me",
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerFilesDeleteFileResult, error *Error) {
+
+		// recreate file
+		if err := afero.WriteFile(files.Fs, testFilePath, []byte("delete me"), 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		if error != nil {
+			t.Fatal(error)
+		}
+
+		assert.DeepEqual(t, result, &executors.ServerFilesDeleteFileResult{
+			Item: files.ActionItem{
+				Path:        "delete_me",
+				Root:        "config",
+				Permissions: "",
+				Size:        0,
+				Modified:    0,
+			},
+			Action: "delete_file",
+		})
+	})
 }

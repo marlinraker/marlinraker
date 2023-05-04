@@ -7,6 +7,7 @@ import (
 	"marlinraker-go/src/files"
 	"marlinraker-go/src/util"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
@@ -47,6 +48,11 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	result, err := executor(nil, request, params)
+	writeExecutorResponse(writer, result, err)
+}
+
+func writeExecutorResponse(writer http.ResponseWriter, result any, err error) {
+
 	if err != nil {
 		log.Error(err)
 		code := 500
@@ -79,4 +85,20 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) {
 
 	writer.WriteHeader(200)
 	_, _ = writer.Write(bytes)
+}
+
+func handleFileDownload(writer http.ResponseWriter, request *http.Request) {
+	path := strings.TrimPrefix(request.URL.Path, "/server/files/")
+	root := strings.Split(path, "/")[0]
+	file := strings.TrimPrefix(filepath.Clean(path[len(root):]), "/")
+	diskPath := filepath.Join(files.DataDir, root, file)
+	http.ServeFile(writer, request, diskPath)
+}
+
+func handleFileDelete(writer http.ResponseWriter, request *http.Request) {
+	path := strings.TrimPrefix(request.URL.Path, "/server/files/")
+	root := strings.Split(path, "/")[0]
+	file := strings.TrimPrefix(filepath.Clean(path[len(root):]), "/")
+	result, err := files.DeleteFile(root, file)
+	writeExecutorResponse(writer, result, err)
 }
