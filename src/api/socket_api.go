@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
-	"marlinraker-go/src/api/executors"
-	"marlinraker-go/src/marlinraker/connections"
-	"marlinraker-go/src/printer_objects"
-	"marlinraker-go/src/util"
+	"marlinraker/src/api/executors"
+	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/printer_objects"
+	"marlinraker/src/util"
 	"net/http"
 )
 

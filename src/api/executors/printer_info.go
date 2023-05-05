@@ -1,10 +1,10 @@
 package executors
 
 import (
-	"marlinraker-go/src/constants"
-	"marlinraker-go/src/marlinraker"
-	"marlinraker-go/src/marlinraker/connections"
-	"marlinraker-go/src/system_info"
+	"marlinraker/src/constants"
+	"marlinraker/src/marlinraker"
+	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/system_info"
 	"net/http"
 	"os"
 )

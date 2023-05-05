@@ -3,7 +3,7 @@ package parser
 import (
 	"github.com/spf13/afero"
 	"gotest.tools/assert"
-	"marlinraker-go/src/files"
+	"marlinraker/src/files"
 	"strconv"
 	"strings"
 	"testing"

@@ -3,7 +3,7 @@ package files
 import (
 	"errors"
 	"github.com/spf13/afero"
-	"marlinraker-go/src/api/notification"
+	"marlinraker/src/api/notification"
 	"path/filepath"
 	"strings"
 	"syscall"

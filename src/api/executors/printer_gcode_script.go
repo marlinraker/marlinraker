@@ -1,9 +1,9 @@
 package executors
 
 import (
-	"marlinraker-go/src/marlinraker"
-	"marlinraker-go/src/marlinraker/connections"
-	"marlinraker-go/src/util"
+	"marlinraker/src/marlinraker"
+	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/util"
 	"net/http"
 )
 

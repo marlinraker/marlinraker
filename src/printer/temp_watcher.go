@@ -2,9 +2,9 @@ package printer
 
 import (
 	log "github.com/sirupsen/logrus"
-	"marlinraker-go/src/marlinraker/temp_store"
-	"marlinraker-go/src/printer/parser"
-	"marlinraker-go/src/printer_objects"
+	"marlinraker/src/marlinraker/temp_store"
+	"marlinraker/src/printer/parser"
+	"marlinraker/src/printer_objects"
 	"math"
 	"regexp"
 	"sync"

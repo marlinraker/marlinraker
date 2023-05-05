@@ -3,9 +3,9 @@ package executors
 import (
 	"fmt"
 	"github.com/samber/lo"
-	"marlinraker-go/src/marlinraker/connections"
-	"marlinraker-go/src/printer_objects"
-	"marlinraker-go/src/util"
+	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/printer_objects"
+	"marlinraker/src/util"
 	"net/http"
 	"strconv"
 	"strings"

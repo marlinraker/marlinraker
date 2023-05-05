@@ -1,7 +1,7 @@
 package temp_store
 
 import (
-	"marlinraker-go/src/printer/parser"
+	"marlinraker/src/printer/parser"
 	"sync"
 	"time"
 )

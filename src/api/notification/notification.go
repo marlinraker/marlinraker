@@ -2,7 +2,7 @@ package notification
 
 import (
 	"encoding/json"
-	"marlinraker-go/src/marlinraker/connections"
+	"marlinraker/src/marlinraker/connections"
 )
 
 type Notification interface {

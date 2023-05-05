@@ -1,8 +1,8 @@
 package executors
 
 import (
-	"marlinraker-go/src/marlinraker/connections"
-	"marlinraker-go/src/marlinraker/temp_store"
+	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/marlinraker/temp_store"
 	"net/http"
 )
 

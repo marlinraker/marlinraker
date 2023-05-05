@@ -4,7 +4,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/afero"
 	"github.com/tidwall/gjson"
-	"marlinraker-go/src/files"
+	"marlinraker/src/files"
 	"os"
 	"path/filepath"
 )

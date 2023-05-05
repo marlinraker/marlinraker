@@ -1,4 +1,4 @@
-module marlinraker-go
+module marlinraker
 
 go 1.20
 

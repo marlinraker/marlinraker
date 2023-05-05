@@ -2,8 +2,8 @@ package printer_objects
 
 import (
 	"errors"
-	"marlinraker-go/src/api/notification"
-	"marlinraker-go/src/marlinraker/connections"
+	"marlinraker/src/api/notification"
+	"marlinraker/src/marlinraker/connections"
 	"reflect"
 	"sync"
 	"time"

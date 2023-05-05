@@ -5,8 +5,8 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/samber/lo"
 	"github.com/spf13/afero"
-	resources "marlinraker-go"
-	"marlinraker-go/src/files"
+	resources "marlinraker"
+	"marlinraker/src/files"
 	"path/filepath"
 	"regexp"
 )

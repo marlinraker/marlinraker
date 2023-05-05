@@ -2,8 +2,8 @@ package executors
 
 import (
 	"fmt"
-	"marlinraker-go/src/marlinraker/connections"
-	"marlinraker-go/src/printer_objects"
+	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/printer_objects"
 	"net/http"
 	"strings"
 	"time"

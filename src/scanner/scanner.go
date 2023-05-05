@@ -4,7 +4,7 @@ import (
 	"bufio"
 	log "github.com/sirupsen/logrus"
 	"go.bug.st/serial"
-	"marlinraker-go/src/config"
+	"marlinraker/src/config"
 	"strconv"
 	"time"
 )

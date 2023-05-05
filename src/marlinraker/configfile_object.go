@@ -1,6 +1,6 @@
 package marlinraker
 
-import "marlinraker-go/src/printer_objects"
+import "marlinraker/src/printer_objects"
 
 type configFileObject struct{}
 

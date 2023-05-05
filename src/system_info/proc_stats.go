@@ -3,8 +3,8 @@ package system_info
 import (
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
-	"marlinraker-go/src/api/notification"
-	"marlinraker-go/src/marlinraker/connections"
+	"marlinraker/src/api/notification"
+	"marlinraker/src/marlinraker/connections"
 	"sync"
 	"time"
 )

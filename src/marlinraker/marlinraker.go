@@ -2,14 +2,14 @@ package marlinraker
 
 import (
 	log "github.com/sirupsen/logrus"
-	"marlinraker-go/src/api/notification"
-	"marlinraker-go/src/config"
-	"marlinraker-go/src/constants"
-	"marlinraker-go/src/marlinraker/temp_store"
-	"marlinraker-go/src/printer"
-	"marlinraker-go/src/printer_objects"
-	"marlinraker-go/src/scanner"
-	"marlinraker-go/src/system_info"
+	"marlinraker/src/api/notification"
+	"marlinraker/src/config"
+	"marlinraker/src/constants"
+	"marlinraker/src/marlinraker/temp_store"
+	"marlinraker/src/printer"
+	"marlinraker/src/printer_objects"
+	"marlinraker/src/scanner"
+	"marlinraker/src/system_info"
 	"path/filepath"
 	"strconv"
 )

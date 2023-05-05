@@ -5,7 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"io"
-	"marlinraker-go/src/files"
+	"marlinraker/src/files"
 	"os"
 	"path/filepath"
 )
