@@ -21,6 +21,8 @@ type Executor func(*connections.Connection, *http.Request, executors.Params) (an
 
 var socketExecutors = map[string]Executor{
 	"machine.proc_stats":            executors.MachineProcStats,
+	"machine.reboot":                executors.MachineReboot,
+	"machine.shutdown":              executors.MachineShutdown,
 	"machine.system_info":           executors.MachineSystemInfo,
 	"printer.firmware_restart":      executors.PrinterFirmwareRestart,
 	"printer.gcode.help":            executors.PrinterGcodeHelp,
@@ -65,6 +67,8 @@ var httpExecutors = map[string]map[string]Executor{
 		"/server/temperature_store": executors.ServerTemperatureStore,
 	},
 	"POST": {
+		"/machine/reboot":            executors.MachineReboot,
+		"/machine/shutdown":          executors.MachineShutdown,
 		"/printer/firmware_restart":  executors.PrinterFirmwareRestart,
 		"/printer/gcode/script":      executors.PrinterGcodeScript,
 		"/printer/objects/subscribe": executors.PrinterObjectsSubscribeHttp,
