@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base32"
 	"fmt"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/websocket"
@@ -542,4 +543,19 @@ func TestApi(t *testing.T) {
 			Action: "zip_files",
 		}, cmpopts.IgnoreFields(files.ActionItem{}, "Modified", "Size"))
 	})
+
+	testAll(t, "access.oneshot_token", "GET", "/access/oneshot_token", executors.Params{},
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.AccessOneshotTokenResult, error *Error) {
+
+			if error != nil {
+				t.Fatal(error)
+			}
+
+			buf, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(string(*result))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, len(buf), 20)
+		})
 }

@@ -20,6 +20,7 @@ type Error struct {
 type Executor func(*connections.Connection, *http.Request, executors.Params) (any, error)
 
 var socketExecutors = map[string]Executor{
+	"access.oneshot_token":          executors.AccessOneshotToken,
 	"machine.proc_stats":            executors.MachineProcStats,
 	"machine.reboot":                executors.MachineReboot,
 	"machine.shutdown":              executors.MachineShutdown,
@@ -50,6 +51,7 @@ var socketExecutors = map[string]Executor{
 
 var httpExecutors = map[string]map[string]Executor{
 	"GET": {
+		"/access/oneshot_token":     executors.AccessOneshotToken,
 		"/machine/proc_stats":       executors.MachineProcStats,
 		"/machine/system_info":      executors.MachineSystemInfo,
 		"/printer/gcode/help":       executors.PrinterGcodeHelp,
