@@ -2,7 +2,7 @@ FROM golang:1.20.3-alpine3.16 AS build
 
 WORKDIR /build
 COPY ./ /build
-RUN go build -o marlinraker src/main.go
+RUN go build -o marlinraker -ldflags "-s -w" src/main.go
 
 FROM alpine:3.16
 
