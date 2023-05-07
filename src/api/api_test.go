@@ -236,6 +236,23 @@ func TestApi(t *testing.T) {
 		assert.Error(t, error, "Key \"key3\" in namespace \"namespace_1\" not found")
 	})
 
+	testAll(t, "server.database.post_item", "POST", "/server/database/item", executors.Params{
+		"namespace": "namespace_1",
+		"key":       "key3",
+		"value":     true,
+	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabasePostItemResult, error *Error) {
+
+		if error != nil {
+			t.Fatal(error)
+		}
+
+		assert.DeepEqual(t, result, &executors.ServerDatabasePostItemResult{
+			Namespace: "namespace_1",
+			Key:       "key3",
+			Value:     true,
+		})
+	})
+
 	testAll(t, "printer.info", "GET", "/printer/info", executors.Params{},
 		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterInfoResult, error *Error) {
 

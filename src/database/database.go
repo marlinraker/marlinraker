@@ -4,6 +4,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/afero"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 	"marlinraker/src/files"
 	"marlinraker/src/util"
 	"os"
@@ -42,6 +43,18 @@ func GetItem(namespace string, key string) (any, error) {
 		}
 	}
 	return result, nil
+}
+
+func PostItem(namespace string, key string, value any) (any, error) {
+	path := joinPath(namespace, key)
+	var err error
+	if json, err = sjson.Set(json, path, value); err != nil {
+		return nil, err
+	}
+	if err := afero.WriteFile(files.Fs, dbFile, []byte(json), 0755); err != nil {
+		return nil, err
+	}
+	return value, nil
 }
 
 func ListNamespaces() []string {
