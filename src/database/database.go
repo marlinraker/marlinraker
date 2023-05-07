@@ -57,6 +57,22 @@ func PostItem(namespace string, key string, value any) (any, error) {
 	return value, nil
 }
 
+func DeleteItem(namespace string, key string) (any, error) {
+	value, err := GetItem(namespace, key)
+	if err != nil {
+		return nil, err
+	}
+
+	path := joinPath(namespace, key)
+	if json, err = sjson.Delete(json, path); err != nil {
+		return nil, err
+	}
+	if err := afero.WriteFile(files.Fs, dbFile, []byte(json), 0755); err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
 func ListNamespaces() []string {
 	result := gjson.Get(json, "@this")
 	return append(ReservedNamespaces, lo.Keys(result.Map())...)

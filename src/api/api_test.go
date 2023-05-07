@@ -253,6 +253,35 @@ func TestApi(t *testing.T) {
 		})
 	})
 
+	// create entry to delete
+	if _, err := database.PostItem("test_namespace", "delete_me", "delete_me"); err != nil {
+		t.Fatal(err)
+	}
+
+	testAll(t, "server.database.delete_item", "DELETE", "/server/database/item", executors.Params{
+		"namespace": "test_namespace",
+		"key":       "delete_me",
+	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseDeleteItemResult, error *Error) {
+
+		_, err := database.GetItem("test_namespace", "delete_me")
+		assert.Error(t, err, "Key \"delete_me\" in namespace \"test_namespace\" not found")
+
+		// re-create entry
+		if _, err := database.PostItem("test_namespace", "delete_me", "delete_me"); err != nil {
+			t.Fatal(err)
+		}
+
+		if error != nil {
+			t.Fatal(error)
+		}
+
+		assert.DeepEqual(t, result, &executors.ServerDatabaseDeleteItemResult{
+			Namespace: "test_namespace",
+			Key:       "delete_me",
+			Value:     "delete_me",
+		})
+	})
+
 	testAll(t, "printer.info", "GET", "/printer/info", executors.Params{},
 		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterInfoResult, error *Error) {
 

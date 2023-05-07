@@ -38,6 +38,7 @@ var socketExecutors = map[string]Executor{
 	"printer.objects.subscribe":     executors.PrinterObjectsSubscribeSocket,
 	"server.config":                 executors.ServerConfig,
 	"server.connection.identify":    executors.ServerConnectionIdentify,
+	"server.database.delete_item":   executors.ServerDatabaseDeleteItem,
 	"server.database.get_item":      executors.ServerDatabaseGetItem,
 	"server.database.list":          executors.ServerDatabaseList,
 	"server.database.post_item":     executors.ServerDatabasePostItem,
@@ -88,6 +89,7 @@ var httpExecutors = map[string]map[string]Executor{
 		"/server/files/zip":          executors.ServerFilesZip,
 	},
 	"DELETE": {
+		"/server/database/item":   executors.ServerDatabaseDeleteItem,
 		"/server/files/directory": executors.ServerFilesDeleteDirectory,
 	},
 }
