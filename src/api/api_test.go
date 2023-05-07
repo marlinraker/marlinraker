@@ -191,9 +191,50 @@ func TestApi(t *testing.T) {
 			}
 
 			assert.DeepEqual(t, result, &executors.ServerDatabaseListResult{
-				Namespaces: []string{"namespace_1", "namespace_2"},
+				Namespaces: append(database.ReservedNamespaces, "namespace_1", "namespace_2"),
 			}, cmpopts.SortSlices(func(a string, b string) bool { return a < b }))
 		})
+
+	testAll(t, "server.database.get_item", "GET", "/server/database/item", executors.Params{
+		"namespace": "namespace_1",
+		"key":       "key1",
+	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
+
+		if error != nil {
+			t.Fatal(error)
+		}
+
+		key := "key1"
+		assert.DeepEqual(t, result, &executors.ServerDatabaseGetItemResult{
+			Namespace: "namespace_1",
+			Key:       &key,
+			Value:     "string",
+		})
+	})
+
+	testAll(t, "server.database.get_item", "GET", "/server/database/item", executors.Params{
+		"namespace": "namespace_1",
+		"key":       "key2",
+	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
+
+		if error != nil {
+			t.Fatal(error)
+		}
+
+		key := "key2"
+		assert.DeepEqual(t, result, &executors.ServerDatabaseGetItemResult{
+			Namespace: "namespace_1",
+			Key:       &key,
+			Value:     123.0,
+		})
+	})
+
+	testAll(t, "server.database.get_item", "GET", "/server/database/item", executors.Params{
+		"namespace": "namespace_1",
+		"key":       "key3",
+	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
+		assert.Error(t, error, "Key \"key3\" in namespace \"namespace_1\" not found")
+	})
 
 	testAll(t, "printer.info", "GET", "/printer/info", executors.Params{},
 		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterInfoResult, error *Error) {

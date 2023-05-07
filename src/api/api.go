@@ -17,6 +17,10 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+func (err Error) Error() string {
+	return err.Message
+}
+
 type Executor func(*connections.Connection, *http.Request, executors.Params) (any, error)
 
 var socketExecutors = map[string]Executor{
@@ -34,6 +38,7 @@ var socketExecutors = map[string]Executor{
 	"printer.objects.subscribe":     executors.PrinterObjectsSubscribeSocket,
 	"server.config":                 executors.ServerConfig,
 	"server.connection.identify":    executors.ServerConnectionIdentify,
+	"server.database.get_item":      executors.ServerDatabaseGetItem,
 	"server.database.list":          executors.ServerDatabaseList,
 	"server.files.delete_directory": executors.ServerFilesDeleteDirectory,
 	"server.files.delete_file":      executors.ServerFilesDeleteFile,
@@ -59,6 +64,7 @@ var httpExecutors = map[string]map[string]Executor{
 		"/printer/objects/list":     executors.PrinterObjectsList,
 		"/printer/objects/query":    executors.PrinterObjectsQuery,
 		"/server/config":            executors.ServerConfig,
+		"/server/database/item":     executors.ServerDatabaseGetItem,
 		"/server/database/list":     executors.ServerDatabaseList,
 		"/server/files/directory":   executors.ServerFilesGetDirectory,
 		"/server/files/list":        executors.ServerFilesList,

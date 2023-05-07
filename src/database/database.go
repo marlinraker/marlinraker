@@ -5,12 +5,13 @@ import (
 	"github.com/spf13/afero"
 	"github.com/tidwall/gjson"
 	"marlinraker/src/files"
+	"marlinraker/src/util"
 	"os"
 	"path/filepath"
 )
 
 var (
-	reservedNamespaces = []string{"marlinraker", "moonraker", "gcode_metadata", "history"}
+	ReservedNamespaces = []string{"marlinraker", "moonraker", "gcode_metadata", "history"}
 	dbFile             string
 	json               string
 )
@@ -30,15 +31,22 @@ func Init() error {
 	return nil
 }
 
-func GetItem(namespace string, key string) string {
+func GetItem(namespace string, key string) (any, error) {
 	path := joinPath(namespace, key)
-	result := gjson.Get(json, path)
-	return result.String()
+	result := gjson.Get(json, path).Value()
+	if result == nil {
+		if key != "" {
+			return nil, util.NewError("Key \""+key+"\" in namespace \""+namespace+"\" not found", 404)
+		} else {
+			return nil, util.NewError("Namespace \""+namespace+"\" not found", 404)
+		}
+	}
+	return result, nil
 }
 
 func ListNamespaces() []string {
 	result := gjson.Get(json, "@this")
-	return lo.Keys(result.Map())
+	return append(ReservedNamespaces, lo.Keys(result.Map())...)
 }
 
 func joinPath(namespace string, key string) string {

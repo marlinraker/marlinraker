@@ -5,6 +5,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/api"
+	"marlinraker/src/database"
 	"marlinraker/src/files"
 	"marlinraker/src/logger"
 	"marlinraker/src/marlinraker"
@@ -26,8 +27,7 @@ func main() {
 	}
 
 	files.DataDir = dataDir
-	err = files.CreateFileRoots()
-	if err != nil {
+	if err := files.CreateFileRoots(); err != nil {
 		panic(err)
 	}
 
@@ -36,6 +36,10 @@ func main() {
 		panic(err)
 	}
 	defer logger.CloseLogger(logFile)
+
+	if err := database.Init(); err != nil {
+		panic(err)
+	}
 
 	marlinraker.Init(dataDir)
 

@@ -12,3 +12,10 @@ func (err *ExecutorError) Error() string {
 func NewError(message string, code int) error {
 	return &ExecutorError{message, code}
 }
+
+func StringOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}

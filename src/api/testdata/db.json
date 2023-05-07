@@ -1,4 +1,7 @@
 {
-  "namespace_1": {},
+  "namespace_1": {
+    "key1": "string",
+    "key2": 123
+  },
   "namespace_2": {}
 }
