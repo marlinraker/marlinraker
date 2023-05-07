@@ -74,6 +74,7 @@ func ParseM105(response string) (map[string]any, error) {
 					return nil, err
 				}
 				heater.Power = power / 127.0
+				temperatures[heaterName] = heater
 			}
 		}
 	}
