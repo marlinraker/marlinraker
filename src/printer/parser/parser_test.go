@@ -76,8 +76,8 @@ func TestParseM105(t *testing.T) {
 			"extruder1": Heater{Sensor{20.7}, 0, 0},
 		},
 		{ // 2
-			"extruder":                   Heater{Sensor{229}, 230, 55 / 127},
-			"heater_bed":                 Heater{Sensor{84.96}, 85, 58 / 127},
+			"extruder":                   Heater{Sensor{229}, 230, 55.0 / 127.0},
+			"heater_bed":                 Heater{Sensor{84.96}, 85, 58.0 / 127.0},
 			"temperature_sensor ambient": Sensor{-30},
 		},
 		{ // 3
