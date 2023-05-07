@@ -333,7 +333,25 @@ func TestApi(t *testing.T) {
 			assert.DeepEqual(t, (*temp_store.TempStore)(result), &store)
 		})
 
-	testAll(t, "printer.objects.query", "GET", "/printer/objects/query", executors.Params{
+	testSocket(t, "printer.objects.query", executors.Params{
+		"objects": map[string]any{
+			"test_object": nil,
+		},
+	}, func(t *testing.T, result *executors.PrinterObjectsQueryResult, error *Error) {
+
+		if error != nil {
+			t.Fatal(error)
+		}
+
+		assert.DeepEqual(t, result.Status, map[string]printer_objects.QueryResult{
+			"test_object": {
+				"attribute1": "value1",
+				"attribute2": "value2",
+			},
+		})
+	})
+
+	testHttp(t, "GET", "/printer/objects/query", executors.Params{
 		"test_object": "",
 	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterObjectsQueryResult, error *Error) {
 
@@ -349,7 +367,24 @@ func TestApi(t *testing.T) {
 		})
 	})
 
-	testAll(t, "printer.objects.query", "GET", "/printer/objects/query", executors.Params{
+	testSocket(t, "printer.objects.query", executors.Params{
+		"objects": map[string]any{
+			"test_object": []string{"attribute1", "attribute3"},
+		},
+	}, func(t *testing.T, result *executors.PrinterObjectsSubscribeResult, error *Error) {
+
+		if error != nil {
+			t.Fatal(error)
+		}
+
+		assert.DeepEqual(t, result.Status, map[string]printer_objects.QueryResult{
+			"test_object": {
+				"attribute1": "value1",
+			},
+		})
+	})
+
+	testHttp(t, "GET", "/printer/objects/query", executors.Params{
 		"test_object": "attribute1,attribute3",
 	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterObjectsQueryResult, error *Error) {
 
@@ -365,7 +400,9 @@ func TestApi(t *testing.T) {
 	})
 
 	testSocket(t, "printer.objects.subscribe", executors.Params{
-		"objects": map[string]any{"test_object": nil},
+		"objects": map[string]any{
+			"test_object": nil,
+		},
 	}, func(t *testing.T, result *executors.PrinterObjectsSubscribeResult, error *Error) {
 
 		if error != nil {
@@ -376,21 +413,6 @@ func TestApi(t *testing.T) {
 			"test_object": {
 				"attribute1": "value1",
 				"attribute2": "value2",
-			},
-		})
-	})
-
-	testSocket(t, "printer.objects.subscribe", executors.Params{
-		"objects": map[string]any{"test_object": []string{"attribute1"}},
-	}, func(t *testing.T, result *executors.PrinterObjectsSubscribeResult, error *Error) {
-
-		if error != nil {
-			t.Fatal(error)
-		}
-
-		assert.DeepEqual(t, result.Status, map[string]printer_objects.QueryResult{
-			"test_object": {
-				"attribute1": "value1",
 			},
 		})
 	})
@@ -408,6 +430,23 @@ func TestApi(t *testing.T) {
 			"test_object": {
 				"attribute1": "value1",
 				"attribute2": "value2",
+			},
+		})
+	})
+
+	testSocket(t, "printer.objects.subscribe", executors.Params{
+		"objects": map[string]any{
+			"test_object": []string{"attribute1"},
+		},
+	}, func(t *testing.T, result *executors.PrinterObjectsSubscribeResult, error *Error) {
+
+		if error != nil {
+			t.Fatal(error)
+		}
+
+		assert.DeepEqual(t, result.Status, map[string]printer_objects.QueryResult{
+			"test_object": {
+				"attribute1": "value1",
 			},
 		})
 	})
