@@ -103,6 +103,11 @@ func (HttpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
 	requestPath := strings.TrimRight(request.URL.Path, "/")
 	switch {
 
+	case requestPath == "":
+		if err := handleIndex(writer, request); err != nil {
+			log.Error(err)
+		}
+
 	case requestPath == "/websocket":
 		if err := handleSocket(writer, request); err != nil {
 			log.Error(err)
