@@ -6,6 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
+	"golang.org/x/exp/slices"
 	"gotest.tools/assert"
 	"marlinraker/src/api/executors"
 	"marlinraker/src/api/notification"
@@ -265,6 +266,9 @@ func TestApi(t *testing.T) {
 
 		_, err := database.GetItem("test_namespace", "delete_me")
 		assert.Error(t, err, "Key \"delete_me\" in namespace \"test_namespace\" not found")
+
+		namespaces := database.ListNamespaces()
+		assert.Equal(t, slices.Contains(namespaces, "delete_me"), false)
 
 		// re-create entry
 		if _, err := database.PostItem("test_namespace", "delete_me", "delete_me"); err != nil {

@@ -67,6 +67,13 @@ func DeleteItem(namespace string, key string) (any, error) {
 	if json, err = sjson.Delete(json, path); err != nil {
 		return nil, err
 	}
+
+	if len(gjson.Get(json, namespace).Map()) == 0 {
+		if json, err = sjson.Delete(json, namespace); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := afero.WriteFile(files.Fs, dbFile, []byte(json), 0755); err != nil {
 		return nil, err
 	}
