@@ -61,15 +61,13 @@ func ConsumeOneshotToken(base32 string) (bool, error) {
 }
 
 func consumeOneshotToken(buf []byte) bool {
-	oneshotTokensMutex.RLock()
-	defer oneshotTokensMutex.RUnlock()
+	oneshotTokensMutex.Lock()
+	defer oneshotTokensMutex.Unlock()
 
 	now := time.Now()
 	for i, token := range oneshotTokens {
 		if bytes.Equal(token.buf, buf) {
-			oneshotTokensMutex.Lock()
 			oneshotTokens = append(oneshotTokens[:i], oneshotTokens[i+1:]...)
-			oneshotTokensMutex.Unlock()
 			return now.Before(token.expire)
 		}
 	}
