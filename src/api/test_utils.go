@@ -41,6 +41,10 @@ func testHttp[Result any](t *testing.T, method string, endpoint string, params e
 		}
 
 		request, _ := http.NewRequest(method, urlQuery.String(), body)
+		if body != nil {
+			request.Header.Add("Content-Type", "application/json")
+		}
+
 		recorder := httptest.NewRecorder()
 		HttpHandler{}.ServeHTTP(recorder, request)
 
@@ -184,10 +188,10 @@ func testFileUpload[Result any](t *testing.T, url string, fields map[string]stri
 	f func(*testing.T, *httptest.ResponseRecorder, *Result, *Error)) {
 	t.Run("POST"+url, func(t *testing.T) {
 
-		pipeReader, pipeWriter := io.Pipe()
-		writer := multipart.NewWriter(pipeWriter)
+		var buf bytes.Buffer
+		writer := multipart.NewWriter(&buf)
 
-		go func() {
+		func() {
 			defer func() {
 				if err := writer.Close(); err != nil {
 					t.Fatal(err)
@@ -220,7 +224,7 @@ func testFileUpload[Result any](t *testing.T, url string, fields map[string]stri
 			}
 		}()
 
-		request := httptest.NewRequest("POST", url, pipeReader)
+		request := httptest.NewRequest("POST", url, &buf)
 		request.Header.Add("Content-Type", writer.FormDataContentType())
 
 		recorder := httptest.NewRecorder()

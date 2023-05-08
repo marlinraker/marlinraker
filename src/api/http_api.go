@@ -33,7 +33,7 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) error {
 		params[param] = value[0]
 	}
 
-	if request.Body != nil && request.ContentLength > 0 {
+	if request.Body != nil && request.ContentLength > 0 && request.Header.Get("Content-Type") == "application/json" {
 		bodyBytes, err := io.ReadAll(request.Body)
 		if err != nil {
 			return err
