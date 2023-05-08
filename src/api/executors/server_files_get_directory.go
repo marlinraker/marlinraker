@@ -9,9 +9,9 @@ import (
 type ServerFilesGetDirectoryResult files.DirectoryInfo
 
 func ServerFilesGetDirectory(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
-	path, exists := params.GetString("path")
-	if !exists {
-		path = "gcodes"
+	path, err := params.RequireString("path")
+	if err != nil {
+		return nil, err
 	}
 
 	return files.GetDirInfo(path)

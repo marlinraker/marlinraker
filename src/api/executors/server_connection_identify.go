@@ -16,24 +16,24 @@ func ServerConnectionIdentify(connection *connections.Connection, _ *http.Reques
 		return nil, util.NewError("connection already identified", 400)
 	}
 
-	clientName, exists := params.GetString("client_name")
-	if !exists {
-		return nil, util.NewError("client_name param is required", 400)
+	clientName, err := params.RequireString("client_name")
+	if err != nil {
+		return nil, err
 	}
 
-	version, exists := params.GetString("version")
-	if !exists {
-		return nil, util.NewError("version param is required", 400)
+	version, err := params.RequireString("version")
+	if err != nil {
+		return nil, err
 	}
 
-	clientType, exists := params.GetString("type")
-	if !exists {
-		return nil, util.NewError("type param is required", 400)
+	clientType, err := params.RequireString("type")
+	if err != nil {
+		return nil, err
 	}
 
-	url, exists := params.GetString("url")
-	if !exists {
-		return nil, util.NewError("url param is required", 400)
+	url, err := params.RequireString("url")
+	if err != nil {
+		return nil, err
 	}
 
 	connection.ClientName, connection.Version, connection.ClientType, connection.Url =

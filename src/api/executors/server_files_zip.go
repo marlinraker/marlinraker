@@ -3,7 +3,6 @@ package executors
 import (
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker/connections"
-	"marlinraker/src/util"
 	"net/http"
 )
 
@@ -13,9 +12,9 @@ func ServerFilesZip(_ *connections.Connection, _ *http.Request, params Params) (
 
 	dest, _ := params.GetString("dest")
 
-	items, exist := params.GetStringSlice("items")
-	if !exist {
-		return nil, util.NewError("items param is required", 400)
+	items, err := params.RequireStringSlice("items")
+	if err != nil {
+		return nil, err
 	}
 
 	storeOnly, _ := params.GetBool("store_only")

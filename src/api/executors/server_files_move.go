@@ -3,22 +3,20 @@ package executors
 import (
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker/connections"
-	"marlinraker/src/util"
 	"net/http"
 )
 
 type ServerFilesMoveResult files.MoveAction
 
 func ServerFilesMove(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
-
-	source, exists := params.GetString("source")
-	if !exists {
-		return nil, util.NewError("source param is required", 400)
+	source, err := params.RequireString("source")
+	if err != nil {
+		return nil, err
 	}
 
-	dest, exists := params.GetString("dest")
-	if !exists {
-		return nil, util.NewError("dest param is required", 400)
+	dest, err := params.RequireString("dest")
+	if err != nil {
+		return nil, err
 	}
 
 	return files.Move(source, dest)

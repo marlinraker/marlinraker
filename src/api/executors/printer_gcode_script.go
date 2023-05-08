@@ -8,10 +8,11 @@ import (
 )
 
 func PrinterGcodeScript(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
-	script, exists := params.GetString("script")
-	if !exists {
-		return nil, util.NewError("script param is required", 400)
+	script, err := params.RequireString("script")
+	if err != nil {
+		return nil, err
 	}
+
 	if marlinraker.Printer == nil {
 		return nil, util.NewError("printer not online", 500)
 	}
