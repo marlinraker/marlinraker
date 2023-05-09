@@ -114,11 +114,7 @@ func (job *printJob) nextLine() (int64, error) {
 		return read, nil
 	}
 
-	ch, err := job.manager.printer.QueueGcode(line, false, true)
-	if err != nil {
-		return read, err
-	}
-	<-ch
+	<-job.manager.printer.QueueGcode(line, false, true)
 	return read, nil
 }
 
@@ -126,9 +122,7 @@ func (job *printJob) pause() bool {
 	if !job.isPaused {
 		job.isPaused = true
 		job.pauseMutex.Lock()
-		if err := job.waitForPrintMoves(); err != nil {
-			log.Error(err)
-		}
+		job.waitForPrintMoves()
 		now := time.Now()
 		job.printDuration += now.Sub(job.lastResumeTime)
 		job.manager.setState("paused")
@@ -160,9 +154,7 @@ func (job *printJob) cancel() bool {
 }
 
 func (job *printJob) finish() error {
-	if err := job.waitForPrintMoves(); err != nil {
-		return err
-	}
+	job.waitForPrintMoves()
 	now := time.Now()
 	job.progress = 1
 	job.hasEnded = true
@@ -172,13 +164,8 @@ func (job *printJob) finish() error {
 	return nil
 }
 
-func (job *printJob) waitForPrintMoves() error {
-	ch, err := job.manager.printer.QueueGcode("M400", false, true)
-	if err != nil {
-		return err
-	}
-	<-ch
-	return nil
+func (job *printJob) waitForPrintMoves() {
+	<-job.manager.printer.QueueGcode("M400", false, true)
 }
 
 func (job *printJob) getTotalTime() time.Duration {

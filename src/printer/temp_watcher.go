@@ -85,7 +85,7 @@ func newTempWatcher(printer *Printer) *tempWatcher {
 	}
 
 	if watcher.autoReport && !printer.IsPrusa {
-		_, _ = printer.QueueGcode("M115 S1", false, true)
+		_ = printer.QueueGcode("M115 S1", false, true)
 	}
 
 	go watcher.runTimer()
@@ -119,12 +119,7 @@ func (watcher *tempWatcher) tick() {
 	}
 
 	if !watcher.autoReport {
-		ch, err := watcher.printer.QueueGcode("M105", true, true)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		watcher.parseTemps(<-ch)
+		watcher.parseTemps(<-watcher.printer.QueueGcode("M105", true, true))
 	}
 }
 

@@ -3,12 +3,12 @@ package printer
 import (
 	"bufio"
 	"errors"
-	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"go.bug.st/serial"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/config"
 	"marlinraker/src/marlinraker/gcode_store"
+	"marlinraker/src/printer/macros"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/printer/print_manager"
 	"strconv"
@@ -50,6 +50,7 @@ type Printer struct {
 	connected              bool
 	heaters                heatersObject
 	PrintManager           *print_manager.PrintManager
+	macroManager           *macros.MacroManager
 }
 
 func New(config *config.Config, path string, baudRate int) (*Printer, error) {
@@ -73,6 +74,7 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 		currentCommandMutex:    &sync.RWMutex{},
 	}
 	printer.PrintManager = print_manager.NewPrintManager(printer)
+	printer.macroManager = macros.NewMacroManager(printer)
 
 	go printer.readPort()
 	err = printer.tryToConnect()
@@ -117,13 +119,7 @@ func (printer *Printer) handshake() error {
 		defer close(errCh1)
 
 		for {
-			ch, err := printer.QueueGcode("M115", false, true)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-
-			info, capabilities, err := parser.ParseM115(<-ch)
+			info, capabilities, err := parser.ParseM115(<-printer.QueueGcode("M115", false, true))
 			if err != nil {
 				log.Error(err)
 				continue
@@ -192,11 +188,11 @@ func (printer *Printer) setup() error {
 			if !reportVelocity {
 				c |= 1 << 2
 			}
-			<-lo.Must(printer.QueueGcode("M155 S1 C"+strconv.Itoa(c), false, true))
+			<-printer.QueueGcode("M155 S1 C"+strconv.Itoa(c), false, true)
 		}
 
 		for {
-			ch := lo.Must(printer.QueueGcode("M503", false, true))
+			ch := printer.QueueGcode("M503", false, true)
 			limits, err := parser.ParseM503(<-ch)
 			if err != nil {
 				log.Println(err)
@@ -271,7 +267,7 @@ func (printer *Printer) handleResponseLine(line string) bool {
 	return true
 }
 
-func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool) (chan string, error) {
+func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool) chan string {
 
 	if !silent {
 		gcode_store.LogNow(gcodeRaw, gcode_store.Command)
@@ -282,10 +278,7 @@ func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool)
 		go func() {
 			chans := make([]chan string, 0)
 			for _, line := range strings.Split(gcodeRaw, "\n") {
-				responseCh, err := printer.QueueGcode(line, important, true)
-				if err == nil {
-					chans = append(chans, responseCh)
-				}
+				chans = append(chans, printer.QueueGcode(line, important, true))
 			}
 			responses := make([]string, 0)
 			for _, responseCh := range chans {
@@ -293,24 +286,28 @@ func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool)
 			}
 			ch <- strings.Join(responses, "\n")
 		}()
-		return ch, nil
+		return ch
 	}
 
 	gcode := strings.TrimSpace(strings.Split(gcodeRaw, ";")[0])
 	if gcode == "" {
-		return nil, errors.New("empty gcode")
+		return nil
 	}
 
-	if ch, err := printer.tryKlipperCommand(gcode); ch != nil || err != nil {
-		if err != nil {
-			message := "!! Error: " + err.Error()
-			gcode_store.LogNow(message, gcode_store.Response)
-			err = notification.Publish(notification.New("notify_gcode_response", []any{message}))
-			if err != nil {
-				log.Error(err)
+	if errCh := printer.macroManager.TryCommand(gcode); errCh != nil {
+		ch := make(chan string)
+		go func() {
+			if err := <-errCh; err != nil {
+				message := "!! Error: " + err.Error()
+				gcode_store.LogNow(message, gcode_store.Response)
+				err = notification.Publish(notification.New("notify_gcode_response", []any{message}))
+				if err != nil {
+					log.Error(err)
+				}
 			}
-		}
-		return ch, err
+			ch <- "ok"
+		}()
+		return ch
 	}
 
 	if printer.hasEmergencyParser && parser.IsEmergencyCommand(gcode, printer.IsPrusa) {
@@ -318,7 +315,7 @@ func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool)
 		_, _ = printer.port.Write([]byte(gcode + "\n"))
 		printer.handleRequestLine(gcode)
 		printer.flush()
-		return nil, nil
+		return nil
 
 	} else {
 		ch := make(chan string)
@@ -326,7 +323,7 @@ func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool)
 		printer.commandQueue = append(printer.commandQueue, Command{gcode: gcode, ch: ch})
 		printer.commandQueueMutex.Unlock()
 		printer.flush()
-		return ch, nil
+		return ch
 	}
 }
 
