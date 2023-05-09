@@ -10,6 +10,7 @@ import (
 	"marlinraker/src/config"
 	"marlinraker/src/marlinraker/gcode_store"
 	"marlinraker/src/printer/parser"
+	"marlinraker/src/printer/print_manager"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,6 +49,7 @@ type Printer struct {
 	CloseCh                chan struct{}
 	connected              bool
 	heaters                heatersObject
+	PrintManager           *print_manager.PrintManager
 }
 
 func New(config *config.Config, path string, baudRate int) (*Printer, error) {
@@ -70,6 +72,7 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 		watchersMutex:          &sync.RWMutex{},
 		currentCommandMutex:    &sync.RWMutex{},
 	}
+	printer.PrintManager = print_manager.NewPrintManager(printer)
 
 	go printer.readPort()
 	err = printer.tryToConnect()
@@ -155,16 +158,17 @@ func (printer *Printer) readPort() {
 		log.WithField("port", printer.path).Debugln("recv: " + line)
 		printer.readLine(line)
 	}
-	printer.onClose()
+	printer.cleanup()
 	close(printer.CloseCh)
 }
 
-func (printer *Printer) onClose() {
+func (printer *Printer) cleanup() {
 	printer.watchersMutex.RLock()
 	for _, watcher := range printer.watchers {
 		watcher.stop()
 	}
 	printer.watchersMutex.RUnlock()
+	printer.PrintManager.Cleanup()
 }
 
 func (printer *Printer) setup() error {
