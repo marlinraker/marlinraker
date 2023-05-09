@@ -476,7 +476,7 @@ func TestApi(t *testing.T) {
 			t.Fatal(result)
 		}
 
-		assert.Equal(t, error.Message, "printer not online")
+		assert.Equal(t, error.Message, "printer is not online")
 	})
 
 	testAll(t, "server.files.roots", "GET", "/server/files/roots", executors.Params{},
