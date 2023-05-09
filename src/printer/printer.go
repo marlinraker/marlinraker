@@ -50,7 +50,7 @@ type Printer struct {
 	connected              bool
 	heaters                heatersObject
 	PrintManager           *print_manager.PrintManager
-	macroManager           *macros.MacroManager
+	MacroManager           *macros.MacroManager
 }
 
 func New(config *config.Config, path string, baudRate int) (*Printer, error) {
@@ -74,7 +74,7 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 		currentCommandMutex:    &sync.RWMutex{},
 	}
 	printer.PrintManager = print_manager.NewPrintManager(printer)
-	printer.macroManager = macros.NewMacroManager(printer)
+	printer.MacroManager = macros.NewMacroManager(printer)
 
 	go printer.readPort()
 	err = printer.tryToConnect()
@@ -294,7 +294,7 @@ func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool)
 		return nil
 	}
 
-	if errCh := printer.macroManager.TryCommand(gcode); errCh != nil {
+	if errCh := printer.MacroManager.TryCommand(gcode); errCh != nil {
 		ch := make(chan string)
 		go func() {
 			if err := <-errCh; err != nil {

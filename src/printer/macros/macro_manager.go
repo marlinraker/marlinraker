@@ -9,8 +9,8 @@ import (
 )
 
 type MacroManager struct {
+	Macros  map[string]Macro
 	printer shared.Printer
-	macros  map[string]Macro
 }
 
 type Params map[string]string
@@ -40,10 +40,10 @@ type Macro interface {
 
 func NewMacroManager(printer shared.Printer) *MacroManager {
 	return &MacroManager{
-		printer: printer,
-		macros: map[string]Macro{
+		Macros: map[string]Macro{
 			"SET_HEATER_TEMPERATURE": setHeaterTemperatureMacro{},
 		},
+		printer: printer,
 	}
 }
 
@@ -52,7 +52,7 @@ func (manager *MacroManager) TryCommand(command string) chan error {
 	parts := strings.Split(command, " ")
 	name := strings.ToUpper(parts[0])
 
-	if macro, exists := manager.macros[name]; exists {
+	if macro, exists := manager.Macros[name]; exists {
 		objects, params := make(Objects), make(Params)
 		for name, object := range printer_objects.GetObjects() {
 			objects[name] = object.Query()
