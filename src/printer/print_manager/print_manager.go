@@ -5,17 +5,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/files"
 	"marlinraker/src/printer_objects"
+	"marlinraker/src/shared"
 	"path/filepath"
 	"regexp"
 	"time"
 )
 
-type GcodeDevice interface {
-	QueueGcode(gcodeRaw string, important bool, silent bool) (chan string, error)
-}
-
 type PrintManager struct {
-	printer    GcodeDevice
+	printer    shared.Printer
 	state      string
 	currentJob *printJob
 	ticker     *time.Ticker
@@ -26,7 +23,7 @@ var (
 	gcodeExtensionRegex = regexp.MustCompile(`(?i)\.gcode$`)
 )
 
-func NewPrintManager(printer GcodeDevice) *PrintManager {
+func NewPrintManager(printer shared.Printer) *PrintManager {
 	manager := &PrintManager{
 		printer: printer,
 		state:   "standby",
