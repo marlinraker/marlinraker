@@ -163,21 +163,24 @@ func (watcher *tempWatcher) parseTemps(data string) {
 
 	for name, temp := range temps {
 
-		if heater, exists := watcher.heaterObjects[name]; exists {
-			temp := temp.(parser.Heater)
-			heater.mutex.Lock()
-			heater.temperature, heater.target, heater.power =
-				temp.Temperature, temp.Target, temp.Power
-			heater.mutex.Unlock()
+		switch temp := temp.(type) {
+		case parser.Heater:
+			if heater, exists := watcher.heaterObjects[name]; exists {
+				heater.mutex.Lock()
+				heater.temperature, heater.target, heater.power =
+					temp.Temperature, temp.Target, temp.Power
+				heater.mutex.Unlock()
+			}
 
-		} else if sensor, exists := watcher.sensorObjects[name]; exists {
-			temp := temp.(parser.Sensor)
-			sensor.mutex.Lock()
-			sensor.temperature, sensor.measuredMinTemp, sensor.measuredMaxTemp =
-				temp.Temperature,
-				math.Min(temp.Temperature, sensor.measuredMinTemp),
-				math.Max(temp.Temperature, sensor.measuredMaxTemp)
-			sensor.mutex.Unlock()
+		case parser.Sensor:
+			if sensor, exists := watcher.sensorObjects[name]; exists {
+				sensor.mutex.Lock()
+				sensor.temperature, sensor.measuredMinTemp, sensor.measuredMaxTemp =
+					temp.Temperature,
+					math.Min(temp.Temperature, sensor.measuredMinTemp),
+					math.Max(temp.Temperature, sensor.measuredMaxTemp)
+				sensor.mutex.Unlock()
+			}
 		}
 	}
 }
