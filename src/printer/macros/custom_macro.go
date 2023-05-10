@@ -1,6 +1,8 @@
 package macros
 
 import (
+	"github.com/Masterminds/sprig/v3"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"text/template"
 )
@@ -11,7 +13,7 @@ type customMacro struct {
 }
 
 func newCustomMacro(name string, description string, content string) (*customMacro, error) {
-	tmpl, err := template.New(name).Parse(content)
+	tmpl, err := template.New(name).Funcs(sprig.FuncMap()).Parse(content)
 	if err != nil {
 		return nil, err
 	}
@@ -23,13 +25,35 @@ func (macro *customMacro) Description() string {
 }
 
 type macroContext struct {
+	manager   *MacroManager
 	Printer   Objects
 	Params    Params
 	RawParams []string
 }
 
+func (context macroContext) ActionRespondInfo(message string) string {
+	if err := context.manager.printer.Respond("// " + message); err != nil {
+		log.Error(err)
+	}
+	return ""
+}
+
+func (context macroContext) ActionRaiseError(message string) string {
+	if err := context.manager.printer.Respond("!! " + message); err != nil {
+		log.Error(err)
+	}
+	return ""
+}
+
 func (macro *customMacro) Execute(manager *MacroManager, rawParams []string, objects Objects, params Params) error {
-	context := macroContext{objects, params, rawParams}
+
+	context := macroContext{
+		manager:   manager,
+		Printer:   objects,
+		Params:    params,
+		RawParams: rawParams,
+	}
+
 	builder := strings.Builder{}
 	if err := macro.tmpl.Execute(&builder, context); err != nil {
 		return err

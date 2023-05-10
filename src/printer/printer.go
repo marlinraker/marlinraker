@@ -11,6 +11,7 @@ import (
 	"marlinraker/src/printer/macros"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/printer/print_manager"
+	"marlinraker/src/shared"
 	"strconv"
 	"strings"
 	"sync"
@@ -303,9 +304,7 @@ func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool)
 		go func() {
 			if err := <-errCh; err != nil {
 				message := "!! Error: " + err.Error()
-				gcode_store.LogNow(message, gcode_store.Response)
-				err = notification.Publish(notification.New("notify_gcode_response", []any{message}))
-				if err != nil {
+				if err := printer.Respond(message); err != nil {
 					log.Error(err)
 				}
 			}
@@ -394,4 +393,13 @@ func (printer *Printer) resetCommandQueue() {
 	printer.commandQueue = []Command{}
 	printer.currentCommand = nil
 	printer.ready = true
+}
+
+func (printer *Printer) GetPrintManager() shared.PrintManager {
+	return printer.PrintManager
+}
+
+func (printer *Printer) Respond(message string) error {
+	gcode_store.LogNow(message, gcode_store.Response)
+	return notification.Publish(notification.New("notify_gcode_response", []any{message}))
 }

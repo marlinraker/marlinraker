@@ -19,7 +19,7 @@ type printJob struct {
 	isPaused       bool
 	isStarted      bool
 	hasEnded       bool
-	canceled       bool
+	isCanceled     bool
 	scanner        *bufio.Scanner
 	position       int64
 	fileSize       int64
@@ -40,7 +40,7 @@ func newPrintJob(manager *PrintManager, fileName string) *printJob {
 		isPaused:   false,
 		isStarted:  false,
 		hasEnded:   false,
-		canceled:   false,
+		isCanceled: false,
 		position:   0,
 		fileSize:   0,
 		progress:   0,
@@ -77,7 +77,10 @@ func (job *printJob) start() error {
 			}
 		}()
 
-		for job.scanner.Scan() && !job.canceled {
+		for job.scanner.Scan() {
+			if job.isCanceled {
+				return
+			}
 			if read, err := job.nextLine(); err != nil {
 				log.Error(err)
 				return
@@ -99,7 +102,7 @@ func (job *printJob) nextLine() (int64, error) {
 	job.pauseMutex.Lock()
 	defer job.pauseMutex.Unlock()
 
-	if job.canceled {
+	if job.isCanceled {
 		return 0, nil
 	}
 
@@ -143,14 +146,24 @@ func (job *printJob) resume() bool {
 }
 
 func (job *printJob) cancel() bool {
+	if job.isCanceled {
+		return false
+	}
+	job.isCanceled = true
+
 	if job.isPaused {
 		job.isPaused = false
 		job.pauseMutex.Unlock()
-		job.lastResumeTime = time.Now()
 	}
-	wasCanceled := job.canceled
-	job.canceled = true
-	return !wasCanceled
+
+	job.waitForPrintMoves()
+	now := time.Now()
+	job.progress = 1
+	job.hasEnded = true
+	job.endTime = now
+	job.lastResumeTime = now
+	job.manager.setState("cancelled")
+	return true
 }
 
 func (job *printJob) finish() error {

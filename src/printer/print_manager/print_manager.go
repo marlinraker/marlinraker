@@ -116,6 +116,20 @@ func (manager *PrintManager) Cancel() error {
 	return nil
 }
 
+func (manager *PrintManager) Reset() error {
+	if manager.currentJob == nil {
+		return errors.New("no file selected")
+	}
+	if manager.isPrinting() {
+		if err := manager.Cancel(); err != nil {
+			return err
+		}
+	}
+	manager.currentJob = nil
+	manager.setState("standby")
+	return nil
+}
+
 func (manager *PrintManager) isPrinting() bool {
 	if manager.currentJob == nil {
 		return false

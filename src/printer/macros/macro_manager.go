@@ -43,7 +43,13 @@ type Macro interface {
 func NewMacroManager(printer shared.Printer, config *config.Config) *MacroManager {
 
 	macros := map[string]Macro{
+		"CANCEL_PRINT":           cancelPrintMacro{},
+		"PAUSE":                  pauseMacro{},
+		"RESUME":                 resumeMacro{},
+		"SDCARD_PRINT_FILE":      sdcardPrintFileMacro{},
+		"SDCARD_RESET_FILE":      sdcardResetFileMacro{},
 		"SET_HEATER_TEMPERATURE": setHeaterTemperatureMacro{},
+		"TURN_OFF_HEATERS":       turnOffHeatersMacro{},
 	}
 
 	for name, macroConfig := range config.Macros {
