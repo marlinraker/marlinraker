@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func GenerateFakeKlipperConfig(config *Config) map[string]any {
 	fakeConfig := map[string]any{
@@ -31,6 +34,16 @@ func GenerateFakeKlipperConfig(config *Config) map[string]any {
 			"mesh_min": "0, 0",
 			"mesh_max": fmt.Sprintf("%d, %d", config.Printer.PrintVolume[0], config.Printer.PrintVolume[1]),
 		}
+	}
+
+	for name, macro := range config.Macros {
+		macroJson := map[string]any{
+			"gcode": macro.Gcode,
+		}
+		if macro.RenameExisting != "" {
+			macroJson["rename_existing"] = strings.ToUpper(macro.RenameExisting)
+		}
+		fakeConfig["gcode_macro "+strings.ToUpper(name)] = macroJson
 	}
 
 	return fakeConfig

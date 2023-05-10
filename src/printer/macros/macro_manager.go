@@ -48,18 +48,24 @@ func NewMacroManager(printer shared.Printer, config *config.Config) *MacroManage
 
 	for name, macroConfig := range config.Macros {
 		name = strings.ToUpper(name)
-		macro, err := newCustomMacro(name, macroConfig.Description, macroConfig.Gcode)
+		macro, err := newCustomMacro(name, "G-Code macro", macroConfig.Gcode)
 		if err != nil {
 			log.Errorln("Error while loading macro \"" + name + "\": " + err.Error())
 			continue
 		}
 		if existing, exists := macros[name]; exists {
-			if macroConfig.RenameExisting != "" {
-				log.Errorln("Error while loading macro \"" + name + "\": Macro \"" + name + "\" already exists." +
-					" Consider using \"rename_existing\"")
+			rename := strings.ToUpper(macroConfig.RenameExisting)
+			if rename == "" {
+				rename = name + "_BASE"
+			}
+			if _, exists := macros[rename]; exists {
+				log.Errorln("Error while loading macro \"" + name + "\": Macro \"" + rename + "\" already exists." +
+					" Choose another macro name with \"rename_existing\"")
 				continue
-			} else {
-				macros[strings.ToUpper(macroConfig.RenameExisting)] = existing
+			}
+			macros[rename] = renamedMacro{
+				original:    existing,
+				description: "Renamed builtin of '" + name + "'",
 			}
 		} else if macroConfig.RenameExisting != "" {
 			log.Warningln("Warning while loading macro \"" + name + "\": \"rename_existing\" was specified " +
