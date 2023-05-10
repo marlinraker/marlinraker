@@ -166,6 +166,7 @@ func (printer *Printer) cleanup() {
 	}
 	printer.watchersMutex.RUnlock()
 	printer.PrintManager.Cleanup()
+	printer.MacroManager.Cleanup()
 }
 
 func (printer *Printer) setup() error {

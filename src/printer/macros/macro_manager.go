@@ -11,8 +11,9 @@ import (
 )
 
 type MacroManager struct {
-	Macros  map[string]Macro
-	printer shared.Printer
+	Macros       map[string]Macro
+	macroObjects []string
+	printer      shared.Printer
 }
 
 type Params map[string]string
@@ -52,6 +53,8 @@ func NewMacroManager(printer shared.Printer, config *config.Config) *MacroManage
 		"TURN_OFF_HEATERS":       turnOffHeatersMacro{},
 	}
 
+	var macroObjects []string
+
 	for name, macroConfig := range config.Macros {
 		name = strings.ToUpper(name)
 		macro, err := newCustomMacro(name, "G-Code macro", macroConfig.Gcode)
@@ -78,9 +81,22 @@ func NewMacroManager(printer shared.Printer, config *config.Config) *MacroManage
 				"although a macro with the name \"" + name + "\" did not exist before")
 		}
 		macros[name] = macro
+
+		if macroConfig.Variables == nil {
+			macroConfig.Variables = map[string]any{}
+		}
+		object, objectName := gcodeMacroObject{macroConfig.Variables}, "gcode_macro "+name
+		printer_objects.RegisterObject(objectName, object)
+		macroObjects = append(macroObjects, objectName)
 	}
 
-	return &MacroManager{macros, printer}
+	return &MacroManager{macros, macroObjects, printer}
+}
+
+func (manager *MacroManager) Cleanup() {
+	for _, objectName := range manager.macroObjects {
+		printer_objects.UnregisterObject(objectName)
+	}
 }
 
 func (manager *MacroManager) TryCommand(command string) chan error {

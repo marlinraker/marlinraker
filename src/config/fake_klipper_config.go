@@ -43,6 +43,9 @@ func GenerateFakeKlipperConfig(config *Config) map[string]any {
 		if macro.RenameExisting != "" {
 			macroJson["rename_existing"] = strings.ToUpper(macro.RenameExisting)
 		}
+		for name, value := range macro.Variables {
+			macroJson["variable_"+name] = value
+		}
 		fakeConfig["gcode_macro "+strings.ToUpper(name)] = macroJson
 	}
 

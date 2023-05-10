@@ -59,8 +59,9 @@ type Printer struct {
 }
 
 type Macro struct {
-	RenameExisting string `toml:"rename_existing"`
-	Gcode          string `toml:"gcode"`
+	RenameExisting string         `toml:"rename_existing"`
+	Variables      map[string]any `toml:"variables"`
+	Gcode          string         `toml:"gcode"`
 }
 
 type Config struct {
