@@ -2,6 +2,8 @@ package macros
 
 import (
 	"errors"
+	log "github.com/sirupsen/logrus"
+	"marlinraker/src/config"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
 	"strconv"
@@ -38,13 +40,35 @@ type Macro interface {
 	Execute(*MacroManager, []string, Objects, Params) error
 }
 
-func NewMacroManager(printer shared.Printer) *MacroManager {
-	return &MacroManager{
-		Macros: map[string]Macro{
-			"SET_HEATER_TEMPERATURE": setHeaterTemperatureMacro{},
-		},
-		printer: printer,
+func NewMacroManager(printer shared.Printer, config *config.Config) *MacroManager {
+
+	macros := map[string]Macro{
+		"SET_HEATER_TEMPERATURE": setHeaterTemperatureMacro{},
 	}
+
+	for name, macroConfig := range config.Macros {
+		name = strings.ToUpper(name)
+		macro, err := newCustomMacro(name, macroConfig.Description, macroConfig.Gcode)
+		if err != nil {
+			log.Errorln("Error while loading macro \"" + name + "\": " + err.Error())
+			continue
+		}
+		if existing, exists := macros[name]; exists {
+			if macroConfig.RenameExisting != "" {
+				log.Errorln("Error while loading macro \"" + name + "\": Macro \"" + name + "\" already exists." +
+					" Consider using \"rename_existing\"")
+				continue
+			} else {
+				macros[strings.ToUpper(macroConfig.RenameExisting)] = existing
+			}
+		} else if macroConfig.RenameExisting != "" {
+			log.Warningln("Warning while loading macro \"" + name + "\": \"rename_existing\" was specified " +
+				"although a macro with the name \"" + name + "\" did not exist before")
+		}
+		macros[name] = macro
+	}
+
+	return &MacroManager{macros, printer}
 }
 
 func (manager *MacroManager) TryCommand(command string) chan error {

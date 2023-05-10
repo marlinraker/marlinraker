@@ -61,6 +61,7 @@ type Printer struct {
 type Macro struct {
 	RenameExisting string `toml:"rename_existing"`
 	Gcode          string `toml:"gcode"`
+	Description    string `toml:"description"`
 }
 
 type Config struct {

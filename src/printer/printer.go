@@ -74,7 +74,7 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 		currentCommandMutex:    &sync.RWMutex{},
 	}
 	printer.PrintManager = print_manager.NewPrintManager(printer)
-	printer.MacroManager = macros.NewMacroManager(printer)
+	printer.MacroManager = macros.NewMacroManager(printer, printer.config)
 
 	go printer.readPort()
 	err = printer.tryToConnect()
@@ -273,12 +273,16 @@ func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool)
 		gcode_store.LogNow(gcodeRaw, gcode_store.Command)
 	}
 
+	gcodeRaw = strings.TrimSpace(gcodeRaw)
+
 	if strings.Contains(gcodeRaw, "\n") {
 		ch := make(chan string)
 		go func() {
 			chans := make([]chan string, 0)
 			for _, line := range strings.Split(gcodeRaw, "\n") {
-				chans = append(chans, printer.QueueGcode(line, important, true))
+				if ch := printer.QueueGcode(line, important, true); ch != nil {
+					chans = append(chans, ch)
+				}
 			}
 			responses := make([]string, 0)
 			for _, responseCh := range chans {
