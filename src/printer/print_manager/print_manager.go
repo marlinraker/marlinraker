@@ -47,9 +47,9 @@ func NewPrintManager(printer shared.Printer) *PrintManager {
 	return manager
 }
 
-func (manager *PrintManager) Cleanup() {
+func (manager *PrintManager) Cleanup(context shared.ExecutorContext) {
 	if manager.currentJob != nil {
-		manager.currentJob.cancel()
+		manager.currentJob.cancel(context)
 	}
 	printer_objects.UnregisterObject("print_stats")
 	printer_objects.UnregisterObject("virtual_sdcard")
@@ -75,53 +75,53 @@ func (manager *PrintManager) SelectFile(fileName string) error {
 	return nil
 }
 
-func (manager *PrintManager) Start() error {
+func (manager *PrintManager) Start(context shared.ExecutorContext) error {
 	if !manager.isReadyToPrint() {
 		return errors.New("already printing")
 	}
-	if err := manager.currentJob.start(); err != nil {
+	if err := manager.currentJob.start(context); err != nil {
 		return err
 	}
 	manager.setState("printing")
 	return nil
 }
 
-func (manager *PrintManager) Pause() error {
+func (manager *PrintManager) Pause(context shared.ExecutorContext) error {
 	if manager.currentJob == nil || manager.state != "printing" {
 		return errors.New("not currently printing")
 	}
-	if !manager.currentJob.pause() {
+	if !manager.currentJob.pause(context) {
 		return errors.New("cannot pause right now")
 	}
 	return nil
 }
 
-func (manager *PrintManager) Resume() error {
+func (manager *PrintManager) Resume(context shared.ExecutorContext) error {
 	if manager.currentJob == nil || manager.state != "paused" {
 		return errors.New("no paused print")
 	}
-	if !manager.currentJob.resume() {
+	if !manager.currentJob.resume(context) {
 		return errors.New("cannot resume right now")
 	}
 	return nil
 }
 
-func (manager *PrintManager) Cancel() error {
+func (manager *PrintManager) Cancel(context shared.ExecutorContext) error {
 	if !manager.isPrinting() {
 		return errors.New("not currently printing")
 	}
-	if !manager.currentJob.cancel() {
+	if !manager.currentJob.cancel(context) {
 		return errors.New("print already canceled")
 	}
 	return nil
 }
 
-func (manager *PrintManager) Reset() error {
+func (manager *PrintManager) Reset(context shared.ExecutorContext) error {
 	if manager.currentJob == nil {
 		return errors.New("no file selected")
 	}
 	if manager.isPrinting() {
-		if err := manager.Cancel(); err != nil {
+		if err := manager.Cancel(context); err != nil {
 			return err
 		}
 	}

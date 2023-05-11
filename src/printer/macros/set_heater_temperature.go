@@ -3,6 +3,7 @@ package macros
 import (
 	"errors"
 	"github.com/samber/lo"
+	"marlinraker/src/shared"
 	"strconv"
 	"strings"
 )
@@ -13,7 +14,7 @@ func (setHeaterTemperatureMacro) Description() string {
 	return "Sets a heater temperature"
 }
 
-func (setHeaterTemperatureMacro) Execute(manager *MacroManager, _ []string, objects Objects, params Params) error {
+func (setHeaterTemperatureMacro) Execute(_ *MacroManager, context shared.ExecutorContext, _ []string, objects Objects, params Params) error {
 
 	heater, err := params.RequireString("heater")
 	if err != nil {
@@ -37,11 +38,11 @@ func (setHeaterTemperatureMacro) Execute(manager *MacroManager, _ []string, obje
 			idx = "0"
 		}
 		gcode := "M104 T" + idx + " S" + strconv.FormatFloat(target, 'f', 2, 64)
-		<-manager.printer.QueueGcode(gcode, false, true)
+		<-context.QueueGcode(gcode, false, true)
 
 	case heater == "heater_bed":
 		gcode := "M140 S" + strconv.FormatFloat(target, 'f', 2, 64)
-		<-manager.printer.QueueGcode(gcode, false, true)
+		<-context.QueueGcode(gcode, false, true)
 
 	default:
 		return errors.New("could not map heater name \"" + heater + "\"")

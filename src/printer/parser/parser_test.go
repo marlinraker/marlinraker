@@ -122,3 +122,22 @@ func TestParseM105(t *testing.T) {
 		})
 	}
 }
+
+func TestParseM220M221(t *testing.T) {
+	s, err := ParseM220M221("M220 S80")
+	assert.NilError(t, err)
+	assert.Equal(t, s, int32(80))
+
+	_, err = ParseM220M221("M220")
+	assert.Error(t, err, "missing S parameter")
+}
+
+func TestParseG0G1G92(t *testing.T) {
+	coords, err := ParseG0G1G92("G1 X109.73 Y119.168 E.29192")
+	assert.NilError(t, err)
+	assert.DeepEqual(t, coords, map[string]float32{
+		"X": 109.73,
+		"Y": 119.168,
+		"E": 0.29192,
+	})
+}

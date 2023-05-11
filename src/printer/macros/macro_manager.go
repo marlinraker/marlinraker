@@ -38,7 +38,7 @@ type Objects map[string]printer_objects.QueryResult
 
 type Macro interface {
 	Description() string
-	Execute(*MacroManager, []string, Objects, Params) error
+	Execute(*MacroManager, shared.ExecutorContext, []string, Objects, Params) error
 }
 
 func NewMacroManager(printer shared.Printer, config *config.Config) *MacroManager {
@@ -46,7 +46,9 @@ func NewMacroManager(printer shared.Printer, config *config.Config) *MacroManage
 	macros := map[string]Macro{
 		"CANCEL_PRINT":           cancelPrintMacro{},
 		"PAUSE":                  pauseMacro{},
+		"RESTORE_GCODE_STATE":    restoreGcodeState{},
 		"RESUME":                 resumeMacro{},
+		"SAVE_GCODE_STATE":       saveGcodeState{},
 		"SDCARD_PRINT_FILE":      sdcardPrintFileMacro{},
 		"SDCARD_RESET_FILE":      sdcardResetFileMacro{},
 		"SET_HEATER_TEMPERATURE": setHeaterTemperatureMacro{},
@@ -99,12 +101,18 @@ func (manager *MacroManager) Cleanup() {
 	}
 }
 
-func (manager *MacroManager) TryCommand(command string) chan error {
+func (manager *MacroManager) TryCommand(context shared.ExecutorContext, command string) chan error {
 
 	parts := strings.Split(command, " ")
 	name := strings.ToUpper(parts[0])
 
 	if macro, exists := manager.Macros[name]; exists {
+
+		subContext, err := context.MakeSubContext(context.Name() + "/" + name)
+		if err != nil {
+			panic(err)
+		}
+
 		objects, params := make(Objects), make(Params)
 		for name, object := range printer_objects.GetObjects() {
 			objects[name] = object.Query()
@@ -123,7 +131,8 @@ func (manager *MacroManager) TryCommand(command string) chan error {
 		ch := make(chan error)
 		go func() {
 			defer close(ch)
-			ch <- macro.Execute(manager, rawParams, objects, params)
+			defer context.ReleaseSubContext()
+			ch <- macro.Execute(manager, subContext, rawParams, objects, params)
 		}()
 		return ch
 	}

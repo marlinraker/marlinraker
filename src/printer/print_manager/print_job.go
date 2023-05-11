@@ -4,6 +4,7 @@ import (
 	"bufio"
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/files"
+	"marlinraker/src/shared"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,7 +49,7 @@ func newPrintJob(manager *PrintManager, fileName string) *printJob {
 	return job
 }
 
-func (job *printJob) start() error {
+func (job *printJob) start(context shared.ExecutorContext) error {
 
 	stat, err := files.Fs.Stat(job.filePath)
 	if err != nil {
@@ -89,7 +90,7 @@ func (job *printJob) start() error {
 				job.progress = float32(job.position) / float32(job.fileSize)
 			}
 		}
-		if err := job.finish(); err != nil {
+		if err := job.finish(context); err != nil {
 			log.Error(err)
 		}
 	}()
@@ -99,8 +100,13 @@ func (job *printJob) start() error {
 
 func (job *printJob) nextLine() (int64, error) {
 
+	context := job.manager.printer.MainExecutorContext()
+	for !context.Ready() {
+		<-context.CommandFinished()
+	}
+
 	job.pauseMutex.Lock()
-	defer job.pauseMutex.Unlock()
+	job.pauseMutex.Unlock()
 
 	if job.isCanceled {
 		return 0, nil
@@ -117,15 +123,15 @@ func (job *printJob) nextLine() (int64, error) {
 		return read, nil
 	}
 
-	<-job.manager.printer.QueueGcode(line, false, true)
+	<-context.QueueGcode(line, false, true)
 	return read, nil
 }
 
-func (job *printJob) pause() bool {
+func (job *printJob) pause(context shared.ExecutorContext) bool {
 	if !job.isPaused {
 		job.isPaused = true
 		job.pauseMutex.Lock()
-		job.waitForPrintMoves()
+		job.waitForPrintMoves(context)
 		now := time.Now()
 		job.printDuration += now.Sub(job.lastResumeTime)
 		job.manager.setState("paused")
@@ -134,8 +140,9 @@ func (job *printJob) pause() bool {
 	return false
 }
 
-func (job *printJob) resume() bool {
+func (job *printJob) resume(context shared.ExecutorContext) bool {
 	if job.isPaused {
+		job.waitForPrintMoves(context)
 		job.isPaused = false
 		job.pauseMutex.Unlock()
 		job.lastResumeTime = time.Now()
@@ -145,7 +152,7 @@ func (job *printJob) resume() bool {
 	return false
 }
 
-func (job *printJob) cancel() bool {
+func (job *printJob) cancel(context shared.ExecutorContext) bool {
 	if job.isCanceled {
 		return false
 	}
@@ -156,7 +163,7 @@ func (job *printJob) cancel() bool {
 		job.pauseMutex.Unlock()
 	}
 
-	job.waitForPrintMoves()
+	job.waitForPrintMoves(context)
 	now := time.Now()
 	job.progress = 1
 	job.hasEnded = true
@@ -166,8 +173,8 @@ func (job *printJob) cancel() bool {
 	return true
 }
 
-func (job *printJob) finish() error {
-	job.waitForPrintMoves()
+func (job *printJob) finish(context shared.ExecutorContext) error {
+	job.waitForPrintMoves(context)
 	now := time.Now()
 	job.progress = 1
 	job.hasEnded = true
@@ -177,8 +184,8 @@ func (job *printJob) finish() error {
 	return nil
 }
 
-func (job *printJob) waitForPrintMoves() {
-	<-job.manager.printer.QueueGcode("M400", false, true)
+func (job *printJob) waitForPrintMoves(context shared.ExecutorContext) {
+	<-context.QueueGcode("M400", false, true)
 }
 
 func (job *printJob) getTotalTime() time.Duration {

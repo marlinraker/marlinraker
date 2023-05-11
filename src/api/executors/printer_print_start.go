@@ -21,7 +21,7 @@ func PrinterPrintStart(_ *connections.Connection, _ *http.Request, params Params
 		return nil, err
 	}
 
-	if err := marlinraker.Printer.PrintManager.Start(); err != nil {
+	if err := marlinraker.Printer.PrintManager.Start(marlinraker.Printer.MainExecutorContext()); err != nil {
 		return nil, err
 	}
 	return "ok", nil

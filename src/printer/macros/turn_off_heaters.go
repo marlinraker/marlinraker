@@ -1,6 +1,7 @@
 package macros
 
 import (
+	"marlinraker/src/shared"
 	"strings"
 )
 
@@ -10,7 +11,7 @@ func (turnOffHeatersMacro) Description() string {
 	return "Turn off all heaters"
 }
 
-func (turnOffHeatersMacro) Execute(manager *MacroManager, _ []string, objects Objects, _ Params) error {
+func (turnOffHeatersMacro) Execute(_ *MacroManager, context shared.ExecutorContext, _ []string, objects Objects, _ Params) error {
 
 	availableHeaters := objects["heaters"]["available_heaters"].([]string)
 	for _, heater := range availableHeaters {
@@ -20,10 +21,10 @@ func (turnOffHeatersMacro) Execute(manager *MacroManager, _ []string, objects Ob
 			if idx == "" {
 				idx = "0"
 			}
-			<-manager.printer.QueueGcode("M104 T"+idx+" S0", false, true)
+			<-context.QueueGcode("M104 T"+idx+" S0", false, true)
 
 		case heater == "heater_bed":
-			<-manager.printer.QueueGcode("M140 S0", false, true)
+			<-context.QueueGcode("M140 S0", false, true)
 		}
 	}
 

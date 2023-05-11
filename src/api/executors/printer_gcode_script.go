@@ -16,6 +16,6 @@ func PrinterGcodeScript(_ *connections.Connection, _ *http.Request, params Param
 	if marlinraker.Printer == nil {
 		return nil, util.NewError("printer is not online", 500)
 	}
-	<-marlinraker.Printer.QueueGcode(script, false, false)
+	<-marlinraker.Printer.MainExecutorContext().QueueGcode(script, false, false)
 	return "ok", err
 }

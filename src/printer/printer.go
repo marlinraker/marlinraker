@@ -12,16 +12,16 @@ import (
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/printer/print_manager"
 	"marlinraker/src/shared"
+	"marlinraker/src/util"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
-type Command struct {
-	gcode       string
-	ch          chan string
-	ResponseBuf string
+type command struct {
+	gcode    string
+	ch       chan string
+	response strings.Builder
 }
 
 type watcher interface {
@@ -30,28 +30,23 @@ type watcher interface {
 }
 
 type Printer struct {
-	config                 *config.Config
-	path                   string
-	port                   serial.Port
-	ready                  bool
-	commandQueue           []Command
-	commandQueueMutex      *sync.RWMutex
-	currentCommand         *Command
-	currentCommandMutex    *sync.RWMutex
-	info                   parser.PrinterInfo
-	Capabilities           map[string]bool
-	IsPrusa                bool
-	hasEmergencyParser     bool
-	limits                 parser.PrinterLimits
-	IsAbsolutePositioning  bool
-	IsAbsoluteEPositioning bool
-	watchers               []watcher
-	watchersMutex          *sync.RWMutex
-	CloseCh                chan struct{}
-	connected              bool
-	heaters                heatersObject
-	PrintManager           *print_manager.PrintManager
-	MacroManager           *macros.MacroManager
+	config             *config.Config
+	context            *executorContext
+	path               string
+	port               serial.Port
+	info               parser.PrinterInfo
+	Capabilities       map[string]bool
+	IsPrusa            bool
+	hasEmergencyParser bool
+	limits             parser.PrinterLimits
+	watchers           util.ThreadSafe[[]watcher]
+	CloseCh            chan struct{}
+	connected          bool
+	heaters            heatersObject
+	PrintManager       *print_manager.PrintManager
+	MacroManager       *macros.MacroManager
+	GcodeState         *GcodeState
+	savedGcodeStates   map[string]GcodeState
 }
 
 func New(config *config.Config, path string, baudRate int) (*Printer, error) {
@@ -62,18 +57,23 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 	}
 
 	printer := &Printer{
-		config:                 config,
-		path:                   path,
-		port:                   port,
-		ready:                  true,
-		IsAbsolutePositioning:  true,
-		IsAbsoluteEPositioning: true,
-		CloseCh:                make(chan struct{}),
-		connected:              false,
-		commandQueueMutex:      &sync.RWMutex{},
-		watchersMutex:          &sync.RWMutex{},
-		currentCommandMutex:    &sync.RWMutex{},
+		config:    config,
+		path:      path,
+		port:      port,
+		watchers:  util.NewThreadSafe(make([]watcher, 0)),
+		CloseCh:   make(chan struct{}),
+		connected: false,
+		GcodeState: &GcodeState{
+			Position:             [4]float32{0, 0, 0, 0},
+			IsAbsoluteCoordinate: true,
+			IsAbsoluteExtrude:    true,
+			SpeedFactor:          100,
+			ExtrudeFactor:        100,
+			Feedrate:             0,
+		},
+		savedGcodeStates: make(map[string]GcodeState),
 	}
+	printer.context = newExecutorContext(printer, "main")
 	printer.PrintManager = print_manager.NewPrintManager(printer)
 	printer.MacroManager = macros.NewMacroManager(printer, printer.config)
 
@@ -85,6 +85,10 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 
 	printer.connected = true
 	return printer, nil
+}
+
+func (printer *Printer) MainExecutorContext() shared.ExecutorContext {
+	return printer.context
 }
 
 func (printer *Printer) Disconnect() error {
@@ -112,7 +116,7 @@ func (printer *Printer) tryToConnect() error {
 }
 
 func (printer *Printer) handshake() error {
-	printer.resetCommandQueue()
+	printer.context.resetCommandQueue()
 
 	errCh1, errCh2 := make(chan error), make(chan error)
 
@@ -120,7 +124,7 @@ func (printer *Printer) handshake() error {
 		defer close(errCh1)
 
 		for {
-			info, capabilities, err := parser.ParseM115(<-printer.QueueGcode("M115", false, true))
+			info, capabilities, err := parser.ParseM115(<-printer.context.QueueGcode("M115", false, true))
 			if err != nil {
 				log.Error(err)
 				continue
@@ -160,12 +164,10 @@ func (printer *Printer) readPort() {
 }
 
 func (printer *Printer) cleanup() {
-	printer.watchersMutex.RLock()
-	for _, watcher := range printer.watchers {
+	for _, watcher := range printer.watchers.Get() {
 		watcher.stop()
 	}
-	printer.watchersMutex.RUnlock()
-	printer.PrintManager.Cleanup()
+	printer.PrintManager.Cleanup(printer.context)
 	printer.MacroManager.Cleanup()
 }
 
@@ -190,11 +192,11 @@ func (printer *Printer) setup() error {
 			if !reportVelocity {
 				c |= 1 << 2
 			}
-			<-printer.QueueGcode("M155 S1 C"+strconv.Itoa(c), false, true)
+			<-printer.context.QueueGcode("M155 S1 C"+strconv.Itoa(c), false, true)
 		}
 
 		for {
-			ch := printer.QueueGcode("M503", false, true)
+			ch := printer.context.QueueGcode("M503", false, true)
 			limits, err := parser.ParseM503(<-ch)
 			if err != nil {
 				log.Println(err)
@@ -205,9 +207,7 @@ func (printer *Printer) setup() error {
 		}
 
 		tempWatcher := newTempWatcher(printer)
-		printer.watchersMutex.Lock()
-		printer.watchers = append(printer.watchers, tempWatcher)
-		printer.watchersMutex.Unlock()
+		printer.watchers.Set(append(printer.watchers.Get(), tempWatcher))
 		printer.heaters = <-tempWatcher.heatersCh
 
 		errorCh1 <- nil
@@ -229,27 +229,18 @@ func (printer *Printer) setup() error {
 }
 
 func (printer *Printer) handleRequestLine(line string) {
-	switch {
-
-	case parser.G90.MatchString(line):
-		printer.IsAbsolutePositioning = true
-		printer.IsAbsoluteEPositioning = true
-
-	case parser.G91.MatchString(line):
-		printer.IsAbsolutePositioning = false
-		printer.IsAbsoluteEPositioning = false
+	if err := printer.GcodeState.update(line); err != nil {
+		log.Error(err)
 	}
 }
 
 func (printer *Printer) handleResponseLine(line string) bool {
 
-	printer.watchersMutex.RLock()
-	for _, watcher := range printer.watchers {
+	for _, watcher := range printer.watchers.Get() {
 		if watcher.handle(line) {
-			return false
+			return true
 		}
 	}
-	printer.watchersMutex.RUnlock()
 
 	if printer.connected && strings.HasPrefix(line, "echo:") {
 		message := line[5:]
@@ -263,137 +254,27 @@ func (printer *Printer) handleResponseLine(line string) bool {
 		}
 
 		gcode_store.LogNow(message, gcode_store.Response)
-		return false
+		return true
 	}
 
-	return true
+	return false
 }
 
-func (printer *Printer) QueueGcode(gcodeRaw string, important bool, silent bool) chan string {
-
-	if !silent {
-		gcode_store.LogNow(gcodeRaw, gcode_store.Command)
-	}
-
-	gcodeRaw = strings.TrimSpace(gcodeRaw)
-
-	if strings.Contains(gcodeRaw, "\n") {
-		ch := make(chan string)
-		go func() {
-			chans := make([]chan string, 0)
-			for _, line := range strings.Split(gcodeRaw, "\n") {
-				if ch := printer.QueueGcode(line, important, true); ch != nil {
-					chans = append(chans, ch)
-				}
-			}
-			responses := make([]string, 0)
-			for _, responseCh := range chans {
-				responses = append(responses, <-responseCh)
-			}
-			ch <- strings.Join(responses, "\n")
-		}()
-		return ch
-	}
-
-	gcode := strings.TrimSpace(strings.Split(gcodeRaw, ";")[0])
-	if gcode == "" {
-		return nil
-	}
-
-	if errCh := printer.MacroManager.TryCommand(gcode); errCh != nil {
-		ch := make(chan string)
-		go func() {
-			if err := <-errCh; err != nil {
-				message := "!! Error: " + err.Error()
-				if err := printer.Respond(message); err != nil {
-					log.Error(err)
-				}
-			}
-			ch <- "ok"
-		}()
-		return ch
-	}
-
+func (printer *Printer) checkEmergencyCommand(gcode string) bool {
 	if printer.hasEmergencyParser && parser.IsEmergencyCommand(gcode, printer.IsPrusa) {
 		log.Debugln("emergency: " + gcode)
 		_, _ = printer.port.Write([]byte(gcode + "\n"))
 		printer.handleRequestLine(gcode)
-		printer.flush()
-		return nil
-
-	} else {
-		ch := make(chan string)
-		printer.commandQueueMutex.Lock()
-		printer.commandQueue = append(printer.commandQueue, Command{gcode: gcode, ch: ch})
-		printer.commandQueueMutex.Unlock()
-		printer.flush()
-		return ch
+		return true
 	}
+	return false
 }
 
 func (printer *Printer) readLine(line string) {
-
-	printer.currentCommandMutex.RLock()
-	currentCommand := printer.currentCommand
-	printer.currentCommandMutex.RUnlock()
-
 	if printer.handleResponseLine(line) {
-		if currentCommand != nil {
-			if currentCommand.ResponseBuf == "" {
-				currentCommand.ResponseBuf = line
-			} else {
-				currentCommand.ResponseBuf += "\n" + line
-			}
-		}
-	}
-
-	if strings.HasPrefix(line, "ok") {
-		if currentCommand != nil {
-			currentCommand.ch <- currentCommand.ResponseBuf
-			close(currentCommand.ch)
-		}
-		printer.currentCommand = nil
-		printer.ready = true
-		printer.flush()
 		return
 	}
-}
-
-func (printer *Printer) flush() {
-
-	printer.commandQueueMutex.Lock()
-	defer printer.commandQueueMutex.Unlock()
-
-	if !printer.ready || len(printer.commandQueue) == 0 {
-		return
-	}
-
-	printer.currentCommandMutex.Lock()
-	printer.currentCommand = &printer.commandQueue[0]
-	printer.currentCommandMutex.Unlock()
-
-	printer.commandQueue = printer.commandQueue[1:]
-
-	log.WithField("port", printer.path).Debugln("write: " + string(printer.currentCommand.gcode))
-
-	_, err := printer.port.Write([]byte(printer.currentCommand.gcode + "\n"))
-	if err != nil {
-		log.Error(err)
-	}
-	printer.handleRequestLine(printer.currentCommand.gcode)
-
-	printer.ready = false
-}
-
-func (printer *Printer) resetCommandQueue() {
-	printer.commandQueueMutex.Lock()
-	printer.currentCommandMutex.Lock()
-	defer printer.commandQueueMutex.Unlock()
-	defer printer.currentCommandMutex.Unlock()
-
-	printer.commandQueue = []Command{}
-	printer.currentCommand = nil
-	printer.ready = true
+	printer.context.readLine(line)
 }
 
 func (printer *Printer) GetPrintManager() shared.PrintManager {
@@ -403,4 +284,19 @@ func (printer *Printer) GetPrintManager() shared.PrintManager {
 func (printer *Printer) Respond(message string) error {
 	gcode_store.LogNow(message, gcode_store.Response)
 	return notification.Publish(notification.New("notify_gcode_response", []any{message}))
+}
+
+func (printer *Printer) SaveGcodeState(name string) {
+	currentState := *printer.GcodeState
+	printer.savedGcodeStates[name] = currentState
+}
+
+func (printer *Printer) RestoreGcodeState(context shared.ExecutorContext, name string) error {
+	savedState, exists := printer.savedGcodeStates[name]
+	if !exists {
+		return errors.New("there is no saved G-code state with the name \"" + name + "\"")
+	}
+	delete(printer.savedGcodeStates, name)
+	printer.GcodeState.restore(context, savedState)
+	return nil
 }

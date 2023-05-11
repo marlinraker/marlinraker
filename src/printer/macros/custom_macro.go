@@ -3,6 +3,7 @@ package macros
 import (
 	"github.com/Masterminds/sprig/v3"
 	log "github.com/sirupsen/logrus"
+	"marlinraker/src/shared"
 	"strings"
 	"text/template"
 )
@@ -45,9 +46,9 @@ func (context macroContext) ActionRaiseError(message string) string {
 	return ""
 }
 
-func (macro *customMacro) Execute(manager *MacroManager, rawParams []string, objects Objects, params Params) error {
+func (macro *customMacro) Execute(manager *MacroManager, context shared.ExecutorContext, rawParams []string, objects Objects, params Params) error {
 
-	context := macroContext{
+	ctx := macroContext{
 		manager:   manager,
 		Printer:   objects,
 		Params:    params,
@@ -55,10 +56,10 @@ func (macro *customMacro) Execute(manager *MacroManager, rawParams []string, obj
 	}
 
 	builder := strings.Builder{}
-	if err := macro.tmpl.Execute(&builder, context); err != nil {
+	if err := macro.tmpl.Execute(&builder, ctx); err != nil {
 		return err
 	}
 	gcode := builder.String()
-	<-manager.printer.QueueGcode(gcode, false, true)
+	<-context.QueueGcode(gcode, false, true)
 	return nil
 }

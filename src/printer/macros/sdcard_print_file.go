@@ -1,12 +1,14 @@
 package macros
 
+import "marlinraker/src/shared"
+
 type sdcardPrintFileMacro struct{}
 
 func (sdcardPrintFileMacro) Description() string {
 	return "Loads a SD file and starts the print. May include files in subdirectories."
 }
 
-func (sdcardPrintFileMacro) Execute(manager *MacroManager, _ []string, _ Objects, params Params) error {
+func (sdcardPrintFileMacro) Execute(manager *MacroManager, context shared.ExecutorContext, _ []string, _ Objects, params Params) error {
 	fileName, err := params.RequireString("filename")
 	if err != nil {
 		return err
@@ -17,7 +19,7 @@ func (sdcardPrintFileMacro) Execute(manager *MacroManager, _ []string, _ Objects
 		return err
 	}
 
-	if err := printManager.Start(); err != nil {
+	if err := printManager.Start(context); err != nil {
 		return err
 	}
 	return nil
