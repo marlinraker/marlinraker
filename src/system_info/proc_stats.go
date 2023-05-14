@@ -4,6 +4,7 @@ import (
 	"github.com/samber/lo"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/printer_objects"
 	"marlinraker/src/util"
 	"sync"
 	"time"
@@ -42,6 +43,8 @@ var (
 )
 
 func Run() {
+	printer_objects.RegisterObject("system_stats", systemStatsObject{})
+
 	var err error
 	lastTimes, err = getCpuTimes()
 	if err != nil {
@@ -58,8 +61,11 @@ func Run() {
 	ticker := time.NewTicker(time.Second)
 	for {
 		<-ticker.C
-		err = takeSnapshot()
-		if err != nil {
+		if err := printer_objects.EmitObject("system_stats"); err != nil {
+			util.LogError(err)
+			break
+		}
+		if err := takeSnapshot(); err != nil {
 			util.LogError(err)
 			break
 		}

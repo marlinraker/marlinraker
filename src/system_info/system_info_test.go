@@ -8,19 +8,14 @@ import (
 
 func BenchmarkGetSystemInfo(b *testing.B) {
 	_, err := GetSystemInfo()
-	if err != nil {
-		b.Fatal(err)
-	}
+	assert.NilError(b, err)
 }
 
 func TestCpuInfo(t *testing.T) {
 
 	t.Run("1", func(t *testing.T) {
 		info, err := getCpuInfoImpl("testdata/cpuinfo1", "testdata/meminfo1")
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		assert.NilError(t, err)
 		assert.Check(t, info.Bits == "32bit" || info.Bits == "64bit", info.Bits)
 		assert.Check(t, info.Processor != "", info.Processor)
 		assert.DeepEqual(t, info, &cpuInfo{
@@ -36,10 +31,7 @@ func TestCpuInfo(t *testing.T) {
 
 	t.Run("2", func(t *testing.T) {
 		info, err := getCpuInfoImpl("testdata/cpuinfo2", "testdata/meminfo2")
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		assert.NilError(t, err)
 		assert.Check(t, info.Bits == "32bit" || info.Bits == "64bit", info.Bits)
 		assert.Check(t, info.Processor != "", info.Processor)
 		assert.DeepEqual(t, info, &cpuInfo{
@@ -58,10 +50,7 @@ func TestSdInfo(t *testing.T) {
 
 	t.Run("1", func(t *testing.T) {
 		info, err := getSdInfoImpl("testdata/cid1", "testdata/csd1")
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		assert.NilError(t, err)
 		assert.DeepEqual(t, info, &sdInfo{
 			ManufacturerId:   "74",
 			Manufacturer:     "PNY",
@@ -77,10 +66,7 @@ func TestSdInfo(t *testing.T) {
 
 	t.Run("2", func(t *testing.T) {
 		info, err := getSdInfoImpl("testdata/cid2", "testdata/csd2")
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		assert.NilError(t, err)
 		assert.DeepEqual(t, info, &sdInfo{
 			ManufacturerId:   "03",
 			Manufacturer:     "Sandisk",
@@ -99,10 +85,7 @@ func TestDistribution(t *testing.T) {
 
 	t.Run("1", func(t *testing.T) {
 		info, err := getDistributionImpl("testdata/os-release1")
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		assert.NilError(t, err)
 		assert.DeepEqual(t, info, &distribution{
 			Name:    "Ubuntu 22.04.2 LTS",
 			Id:      "ubuntu",
@@ -118,10 +101,7 @@ func TestDistribution(t *testing.T) {
 
 	t.Run("2", func(t *testing.T) {
 		info, err := getDistributionImpl("testdata/os-release2")
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		assert.NilError(t, err)
 		assert.DeepEqual(t, info, &distribution{
 			Name:    "Raspbian GNU/Linux 11 (bullseye)",
 			Id:      "raspbian",
@@ -137,7 +117,5 @@ func TestDistribution(t *testing.T) {
 
 func TestNetworks(t *testing.T) {
 	_, err := getNetwork()
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
 }
