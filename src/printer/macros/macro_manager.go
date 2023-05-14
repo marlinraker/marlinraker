@@ -101,41 +101,38 @@ func (manager *MacroManager) Cleanup() {
 	}
 }
 
-func (manager *MacroManager) TryCommand(context shared.ExecutorContext, command string) chan error {
+func (manager *MacroManager) GetMacro(command string) (Macro, string, bool) {
+	idx := strings.Index(command, " ")
+	if idx != -1 {
+		command = command[:idx]
+	}
+	command = strings.ToUpper(command)
+	macro, exists := manager.Macros[command]
+	return macro, command, exists
+}
 
-	parts := strings.Split(command, " ")
-	name := strings.ToUpper(parts[0])
+func (manager *MacroManager) ExecuteMacro(macro Macro, context shared.ExecutorContext, gcode string) chan error {
 
-	if macro, exists := manager.Macros[name]; exists {
-
-		subContext, err := context.MakeSubContext(context.Name() + "/" + name)
-		if err != nil {
-			panic(err)
-		}
-
-		objects, params := make(Objects), make(Params)
-		for name, object := range printer_objects.GetObjects() {
-			objects[name] = object.Query()
-		}
-
-		rawParams := parts[1:]
-		for _, rawParam := range rawParams {
-			if idx := strings.Index(rawParam, "="); idx != -1 {
-				name, value := rawParam[:idx], rawParam[idx+1:]
-				if name != "" && value != "" {
-					params[strings.ToLower(name)] = value
-				}
-			}
-		}
-
-		ch := make(chan error)
-		go func() {
-			defer close(ch)
-			defer context.ReleaseSubContext()
-			ch <- macro.Execute(manager, subContext, rawParams, objects, params)
-		}()
-		return ch
+	parts := strings.Split(gcode, " ")
+	objects, params := make(Objects), make(Params)
+	for name, object := range printer_objects.GetObjects() {
+		objects[name] = object.Query()
 	}
 
-	return nil
+	rawParams := parts[1:]
+	for _, rawParam := range rawParams {
+		if idx := strings.Index(rawParam, "="); idx != -1 {
+			name, value := rawParam[:idx], rawParam[idx+1:]
+			if name != "" && value != "" {
+				params[strings.ToLower(name)] = value
+			}
+		}
+	}
+
+	ch := make(chan error)
+	go func() {
+		defer close(ch)
+		ch <- macro.Execute(manager, context, rawParams, objects, params)
+	}()
+	return ch
 }

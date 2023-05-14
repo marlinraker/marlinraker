@@ -60,6 +60,6 @@ func (macro *customMacro) Execute(manager *MacroManager, context shared.Executor
 		return err
 	}
 	gcode := builder.String()
-	<-context.QueueGcode(gcode, false, true)
+	<-context.QueueGcode(gcode, true)
 	return nil
 }

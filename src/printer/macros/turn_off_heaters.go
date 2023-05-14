@@ -21,10 +21,10 @@ func (turnOffHeatersMacro) Execute(_ *MacroManager, context shared.ExecutorConte
 			if idx == "" {
 				idx = "0"
 			}
-			<-context.QueueGcode("M104 T"+idx+" S0", false, true)
+			<-context.QueueGcode("M104 T"+idx+" S0", true)
 
 		case heater == "heater_bed":
-			<-context.QueueGcode("M140 S0", false, true)
+			<-context.QueueGcode("M140 S0", true)
 		}
 	}
 

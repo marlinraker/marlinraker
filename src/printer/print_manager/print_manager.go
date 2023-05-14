@@ -6,15 +6,17 @@ import (
 	"marlinraker/src/files"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
+	"marlinraker/src/util"
 	"path/filepath"
 	"regexp"
+	"sync/atomic"
 	"time"
 )
 
 type PrintManager struct {
 	printer    shared.Printer
-	state      string
-	currentJob *printJob
+	state      util.ThreadSafe[string]
+	currentJob atomic.Pointer[printJob]
 	ticker     *time.Ticker
 	closeCh    chan struct{}
 }
@@ -26,7 +28,7 @@ var (
 func NewPrintManager(printer shared.Printer) *PrintManager {
 	manager := &PrintManager{
 		printer: printer,
-		state:   "standby",
+		state:   util.NewThreadSafe("standby"),
 		ticker:  time.NewTicker(time.Second),
 	}
 	printer_objects.RegisterObject("print_stats", printStatsObject{manager})
@@ -38,7 +40,7 @@ func NewPrintManager(printer shared.Printer) *PrintManager {
 			case <-manager.closeCh:
 				return
 			case <-manager.ticker.C:
-				if manager.isPrinting() {
+				if manager.isPrinting(manager.currentJob.Load(), manager.state.Load()) {
 					manager.emit()
 				}
 			}
@@ -48,8 +50,8 @@ func NewPrintManager(printer shared.Printer) *PrintManager {
 }
 
 func (manager *PrintManager) Cleanup(context shared.ExecutorContext) {
-	if manager.currentJob != nil {
-		manager.currentJob.cancel(context)
+	if job := manager.currentJob.Load(); job != nil {
+		job.cancel(context)
 	}
 	printer_objects.UnregisterObject("print_stats")
 	printer_objects.UnregisterObject("virtual_sdcard")
@@ -60,7 +62,8 @@ func (manager *PrintManager) Cleanup(context shared.ExecutorContext) {
 }
 
 func (manager *PrintManager) SelectFile(fileName string) error {
-	if manager.isPrinting() {
+	job, state := manager.currentJob.Load(), manager.state.Load()
+	if manager.isPrinting(job, state) {
 		return errors.New("already printing")
 	}
 	if !gcodeExtensionRegex.MatchString(fileName) {
@@ -70,16 +73,17 @@ func (manager *PrintManager) SelectFile(fileName string) error {
 	if _, err := files.Fs.Stat(diskPath); err != nil {
 		return err
 	}
-	manager.currentJob = newPrintJob(manager, fileName)
+	manager.currentJob.Store(newPrintJob(manager, fileName))
 	manager.emit()
 	return nil
 }
 
 func (manager *PrintManager) Start(context shared.ExecutorContext) error {
-	if !manager.isReadyToPrint() {
+	job, state := manager.currentJob.Load(), manager.state.Load()
+	if !manager.isReadyToPrint(job, state) {
 		return errors.New("already printing")
 	}
-	if err := manager.currentJob.start(context); err != nil {
+	if err := job.start(context); err != nil {
 		return err
 	}
 	manager.setState("printing")
@@ -87,61 +91,65 @@ func (manager *PrintManager) Start(context shared.ExecutorContext) error {
 }
 
 func (manager *PrintManager) Pause(context shared.ExecutorContext) error {
-	if manager.currentJob == nil || manager.state != "printing" {
+	job, state := manager.currentJob.Load(), manager.state.Load()
+	if job == nil || state != "printing" {
 		return errors.New("not currently printing")
 	}
-	if !manager.currentJob.pause(context) {
+	if !job.pause(context) {
 		return errors.New("cannot pause right now")
 	}
 	return nil
 }
 
 func (manager *PrintManager) Resume(context shared.ExecutorContext) error {
-	if manager.currentJob == nil || manager.state != "paused" {
+	job, state := manager.currentJob.Load(), manager.state.Load()
+	if job == nil || state != "paused" {
 		return errors.New("no paused print")
 	}
-	if !manager.currentJob.resume(context) {
+	if !job.resume(context) {
 		return errors.New("cannot resume right now")
 	}
 	return nil
 }
 
 func (manager *PrintManager) Cancel(context shared.ExecutorContext) error {
-	if !manager.isPrinting() {
+	job, state := manager.currentJob.Load(), manager.state.Load()
+	if !manager.isPrinting(job, state) {
 		return errors.New("not currently printing")
 	}
-	if !manager.currentJob.cancel(context) {
+	if !job.cancel(context) {
 		return errors.New("print already canceled")
 	}
 	return nil
 }
 
 func (manager *PrintManager) Reset(context shared.ExecutorContext) error {
-	if manager.currentJob == nil {
+	job, state := manager.currentJob.Load(), manager.state.Load()
+	if job == nil {
 		return errors.New("no file selected")
 	}
-	if manager.isPrinting() {
+	if manager.isPrinting(job, state) {
 		if err := manager.Cancel(context); err != nil {
 			return err
 		}
 	}
-	manager.currentJob = nil
+	manager.currentJob.Store(nil)
 	manager.setState("standby")
 	return nil
 }
 
-func (manager *PrintManager) isPrinting() bool {
-	if manager.currentJob == nil {
+func (manager *PrintManager) isPrinting(job *printJob, state string) bool {
+	if job == nil {
 		return false
 	}
-	return manager.state == "printing" || manager.state == "paused"
+	return state == "printing" || state == "paused"
 }
 
-func (manager *PrintManager) isReadyToPrint() bool {
-	if manager.currentJob == nil {
+func (manager *PrintManager) isReadyToPrint(job *printJob, state string) bool {
+	if job == nil {
 		return false
 	}
-	switch manager.state {
+	switch state {
 	case "standby", "complete", "cancelled", "error":
 		return true
 	}
@@ -149,7 +157,7 @@ func (manager *PrintManager) isReadyToPrint() bool {
 }
 
 func (manager *PrintManager) setState(state string) {
-	manager.state = state
+	manager.state.Store(state)
 	manager.emit()
 }
 

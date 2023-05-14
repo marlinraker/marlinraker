@@ -19,9 +19,8 @@ type PrintManager interface {
 
 type ExecutorContext interface {
 	Name() string
-	QueueGcode(gcodeRaw string, important bool, silent bool) chan string
+	QueueGcode(gcodeRaw string, silent bool) chan string
 	MakeSubContext(name string) (ExecutorContext, error)
 	ReleaseSubContext()
-	CommandFinished() chan struct{}
-	Ready() bool
+	Pending() chan struct{}
 }

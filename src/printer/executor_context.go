@@ -7,45 +7,101 @@ import (
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/shared"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
+
+type command struct {
+	gcode string
+	ch    chan string
+}
 
 type executorContext struct {
 	printer         *Printer
 	name            string
-	commandQueue    []command
-	currentCommand  *command
-	ready           bool
-	subContext      *executorContext
-	finishListeners []chan struct{}
+	subContext      atomic.Pointer[executorContext]
+	closeCh         chan struct{}
+	commandCh       chan command
+	responseCh      chan string
+	responseBuilder strings.Builder
+	pending         *sync.WaitGroup
+	mu              *sync.Mutex
 }
 
 func newExecutorContext(printer *Printer, name string) *executorContext {
-	return &executorContext{
-		printer:         printer,
-		name:            name,
-		commandQueue:    make([]command, 0),
-		ready:           true,
-		finishListeners: make([]chan struct{}, 0),
+	context := &executorContext{
+		printer:    printer,
+		name:       name,
+		closeCh:    make(chan struct{}),
+		commandCh:  make(chan command, 128),
+		responseCh: make(chan string),
+		pending:    &sync.WaitGroup{},
+		mu:         &sync.Mutex{},
 	}
+	go context.work()
+	return context
+}
+
+func (context *executorContext) close() {
+	close(context.closeCh)
 }
 
 func (context *executorContext) Name() string {
 	return context.name
 }
 
+func (context *executorContext) Pending() chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		context.pending.Wait()
+		close(ch)
+	}()
+	return ch
+}
+
 func (context *executorContext) MakeSubContext(name string) (shared.ExecutorContext, error) {
-	if context.subContext != nil {
+	if ctx := context.subContext.Load(); ctx != nil {
 		return nil, errors.New("context already has subcontext")
 	}
-	context.subContext = newExecutorContext(context.printer, name)
-	return context.subContext, nil
+	subContext := newExecutorContext(context.printer, name)
+	context.subContext.Store(subContext)
+	return subContext, nil
 }
 
 func (context *executorContext) ReleaseSubContext() {
-	context.subContext = nil
+	ctx := context.subContext.Load()
+	context.subContext.Store(nil)
+	ctx.close()
 }
 
-func (context *executorContext) QueueGcode(gcode string, important bool, silent bool) chan string {
+func (context *executorContext) work() {
+	log.WithField("context", context.name).Debugln("begin")
+	for {
+		select {
+		case <-context.closeCh:
+			log.WithField("context", context.name).Debugln("end")
+			return
+
+		case cmd := <-context.commandCh:
+			context.flush(cmd)
+
+			response := <-context.responseCh
+			context.responseBuilder = strings.Builder{}
+			select {
+			case cmd.ch <- response:
+			default:
+			}
+			close(cmd.ch)
+			context.printer.handleRequestLine(cmd.gcode)
+			context.pending.Done()
+		}
+	}
+}
+
+func (context *executorContext) QueueGcode(gcode string, silent bool) chan string {
+
+	context.mu.Lock()
+	defer context.mu.Unlock()
 
 	log.WithField("context", context.name).Debugln("queued " + gcode)
 
@@ -59,30 +115,26 @@ func (context *executorContext) QueueGcode(gcode string, important bool, silent 
 	}
 
 	if strings.Contains(gcode, "\n") {
-		ch := make(chan string)
+		chans := make([]chan string, 0)
+		lines := strings.Split(gcode, "\n")
+		context.pending.Add(len(lines))
+
+		for _, line := range lines {
+			ch := make(chan string)
+			chans = append(chans, ch)
+			cmd := command{gcode: line, ch: ch}
+			context.commandCh <- cmd
+		}
+
+		responseCh := make(chan string)
 		go func() {
-			commands := make([]command, 0)
-			for _, line := range strings.Split(gcode, "\n") {
-				ch := make(chan string)
-				commands = append(commands, command{gcode: line, ch: ch})
+			response := make([]string, 0)
+			for _, ch := range chans {
+				response = append(response, <-ch)
 			}
-
-			if important {
-				context.commandQueue = append(commands, context.commandQueue...)
-			} else {
-				context.commandQueue = append(context.commandQueue, commands...)
-			}
-			go context.flush()
-
-			responses := make([]string, 0)
-			for _, command := range commands {
-				if command.ch != nil {
-					responses = append(responses, <-command.ch)
-				}
-			}
-			ch <- strings.Join(responses, "\n")
+			responseCh <- strings.Join(response, "\n")
 		}()
-		return ch
+		return responseCh
 	}
 
 	if context.printer.checkEmergencyCommand(gcode) {
@@ -91,101 +143,60 @@ func (context *executorContext) QueueGcode(gcode string, important bool, silent 
 
 	ch := make(chan string)
 	cmd := command{gcode: gcode, ch: ch}
-	if important {
-		context.commandQueue = append([]command{cmd}, context.commandQueue...)
-	} else {
-		context.commandQueue = append(context.commandQueue, cmd)
-	}
-	go context.flush()
+	context.pending.Add(1)
+	context.commandCh <- cmd
 	return ch
-}
-
-func (context *executorContext) CommandFinished() chan struct{} {
-	ch := make(chan struct{})
-	context.finishListeners = append(context.finishListeners, ch)
-	return ch
-}
-
-func (context *executorContext) Ready() bool {
-	return context.ready && len(context.commandQueue) == 0
 }
 
 func (context *executorContext) readLine(line string) {
 
-	if context.subContext != nil {
-		context.subContext.readLine(line)
+	if subContext := context.subContext.Load(); subContext != nil {
+		subContext.readLine(line)
 		return
 	}
 
-	if context != nil {
-		if context.currentCommand.response.Len() > 0 {
-			context.currentCommand.response.WriteByte('\n')
-		}
-		context.currentCommand.response.WriteString(line)
+	log.WithField("context", context.name).Debugln("read: " + line)
+
+	if context.responseBuilder.Len() > 0 {
+		context.responseBuilder.WriteByte('\n')
 	}
+	context.responseBuilder.WriteString(line)
 
 	if strings.HasPrefix(line, "ok") {
-		context.finishCommand()
-		return
+		context.responseCh <- context.responseBuilder.String()
 	}
 }
 
-func (context *executorContext) finishCommand() {
-	if context.currentCommand != nil {
-		context.currentCommand.ch <- context.currentCommand.response.String()
-		close(context.currentCommand.ch)
-		context.printer.handleRequestLine(context.currentCommand.gcode)
-		context.currentCommand = nil
-	}
-	context.ready = true
+func (context *executorContext) flush(cmd command) {
 
-	if len(context.finishListeners) > 0 {
-		for _, ch := range context.finishListeners {
-			close(ch)
+	if macro, name, exists := context.printer.MacroManager.GetMacro(cmd.gcode); exists {
+		log.WithField("context", context.name).Debugln("macro: " + cmd.gcode)
+
+		subContext, err := context.MakeSubContext(context.Name() + "/" + name)
+		if err != nil {
+			panic(err)
 		}
-		context.finishListeners = make([]chan struct{}, 0)
-	}
-	go context.flush()
-}
 
-func (context *executorContext) flush() {
-
-	if !context.ready || len(context.commandQueue) == 0 {
-		return
-	}
-
-	context.ready = false
-	context.currentCommand = &context.commandQueue[0]
-	context.commandQueue = context.commandQueue[1:]
-
-	if errCh := context.printer.MacroManager.TryCommand(context, context.currentCommand.gcode); errCh != nil {
-
-		log.WithField("context", context.name).Debugln("macro: " + context.currentCommand.gcode)
-		go func() {
-			if err := <-errCh; err != nil {
-				message := "!! Error: " + err.Error()
-				if err := context.printer.Respond(message); err != nil {
-					log.Error(err)
-				}
+		if err := <-context.printer.MacroManager.ExecuteMacro(macro, subContext, cmd.gcode); err != nil {
+			message := "!! Error: " + err.Error()
+			if err := context.printer.Respond(message); err != nil {
+				log.Error(err)
 			}
-			context.currentCommand.response.WriteString("ok")
-			context.finishCommand()
+		}
+		context.ReleaseSubContext()
+
+		go func() {
+			context.responseCh <- "ok"
 		}()
 		return
 	}
 
 	log.WithField("context", context.name).
 		WithField("port", context.printer.path).
-		Debugln("write: " + string(context.currentCommand.gcode))
+		Debugln("write: " + string(cmd.gcode))
 
-	_, err := context.printer.port.Write([]byte(context.currentCommand.gcode + "\n"))
+	_, err := context.printer.port.Write([]byte(cmd.gcode + "\n"))
 	if err != nil {
 		log.Error(err)
 	}
-}
-
-func (context *executorContext) resetCommandQueue() {
-	context.commandQueue = make([]command, 0)
-	context.currentCommand = nil
-	context.ready = true
 }

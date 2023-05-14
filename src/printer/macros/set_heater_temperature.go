@@ -38,11 +38,11 @@ func (setHeaterTemperatureMacro) Execute(_ *MacroManager, context shared.Executo
 			idx = "0"
 		}
 		gcode := "M104 T" + idx + " S" + strconv.FormatFloat(target, 'f', 2, 64)
-		<-context.QueueGcode(gcode, false, true)
+		<-context.QueueGcode(gcode, true)
 
 	case heater == "heater_bed":
 		gcode := "M140 S" + strconv.FormatFloat(target, 'f', 2, 64)
-		<-context.QueueGcode(gcode, false, true)
+		<-context.QueueGcode(gcode, true)
 
 	default:
 		return errors.New("could not map heater name \"" + heater + "\"")

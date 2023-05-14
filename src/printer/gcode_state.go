@@ -129,5 +129,5 @@ func (state *GcodeState) restore(context shared.ExecutorContext, restoreTo Gcode
 	}
 	state.Position = restoreTo.Position
 
-	<-context.QueueGcode(builder.String(), false, true)
+	<-context.QueueGcode(builder.String(), true)
 }

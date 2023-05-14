@@ -14,7 +14,7 @@ func (object printStatsObject) Query() printer_objects.QueryResult {
 		printDuration float64
 	)
 
-	if job := object.manager.currentJob; job != nil {
+	if job := object.manager.currentJob.Load(); job != nil {
 		fileName = job.fileName
 		totalDuration = job.getTotalTime().Seconds()
 		printDuration = job.getPrintTime().Seconds()
@@ -25,7 +25,7 @@ func (object printStatsObject) Query() printer_objects.QueryResult {
 		"total_duration": totalDuration,
 		"print_duration": printDuration,
 		"filament_used":  0,
-		"state":          object.manager.state,
+		"state":          object.manager.state.Load(),
 		"message":        "",
 	}
 }
@@ -43,13 +43,13 @@ func (object virtualSdcardObject) Query() printer_objects.QueryResult {
 		position int64
 	)
 
-	if job := object.manager.currentJob; job != nil {
+	if job := object.manager.currentJob.Load(); job != nil {
 		filePath, progress, size, position =
-			job.filePath, job.progress, job.fileSize, job.position
+			job.filePath, job.progress.Load(), job.fileSize, job.position.Load()
 	}
 
 	return printer_objects.QueryResult{
-		"is_active":     object.manager.state == "printing",
+		"is_active":     object.manager.state.Load() == "printing",
 		"progress":      progress,
 		"file_path":     filePath,
 		"file_position": position,
@@ -63,6 +63,6 @@ type pauseResumeObject struct {
 
 func (object pauseResumeObject) Query() printer_objects.QueryResult {
 	return printer_objects.QueryResult{
-		"is_paused": object.manager.state == "paused",
+		"is_paused": object.manager.state.Load() == "paused",
 	}
 }

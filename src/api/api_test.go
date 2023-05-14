@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/base32"
-	"fmt"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
@@ -472,7 +471,6 @@ func TestApi(t *testing.T) {
 	}, func(t *testing.T, response *httptest.ResponseRecorder, result *string, error *Error) {
 
 		if result != nil {
-			fmt.Printf("%v\n", result)
 			t.Fatal(result)
 		}
 

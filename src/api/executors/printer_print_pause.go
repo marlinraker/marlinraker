@@ -11,6 +11,6 @@ func PrinterPrintPause(*connections.Connection, *http.Request, Params) (any, err
 	if marlinraker.Printer == nil {
 		return nil, util.NewError("printer is not online", 500)
 	}
-	<-marlinraker.Printer.MainExecutorContext().QueueGcode("PAUSE", true, true)
+	<-marlinraker.Printer.MainExecutorContext().QueueGcode("PAUSE", true)
 	return "ok", nil
 }

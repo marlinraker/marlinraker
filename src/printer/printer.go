@@ -18,12 +18,6 @@ import (
 	"time"
 )
 
-type command struct {
-	gcode    string
-	ch       chan string
-	response strings.Builder
-}
-
 type watcher interface {
 	handle(line string) bool
 	stop()
@@ -73,7 +67,6 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 		},
 		savedGcodeStates: make(map[string]GcodeState),
 	}
-	printer.context = newExecutorContext(printer, "main")
 	printer.PrintManager = print_manager.NewPrintManager(printer)
 	printer.MacroManager = macros.NewMacroManager(printer, printer.config)
 
@@ -103,7 +96,7 @@ func (printer *Printer) Disconnect() error {
 func (printer *Printer) tryToConnect() error {
 	maxAttempts := printer.config.Serial.MaxConnectionAttempts
 	for i := 0; i < maxAttempts; i++ {
-		if err := printer.handshake(); err != nil {
+		if err := printer.handshake(i); err != nil {
 			if i < maxAttempts-1 {
 				log.Error(err)
 				log.Println("Retrying... (" + strconv.Itoa(maxAttempts-i-1) + " attempt(s) left)")
@@ -115,8 +108,9 @@ func (printer *Printer) tryToConnect() error {
 	return errors.New("could not connect to printer after " + strconv.Itoa(maxAttempts) + " attempts")
 }
 
-func (printer *Printer) handshake() error {
-	printer.context.resetCommandQueue()
+func (printer *Printer) handshake(attempt int) error {
+	printer.context = newExecutorContext(printer, "handshake"+strconv.Itoa(attempt))
+	defer printer.context.close()
 
 	errCh1, errCh2 := make(chan error), make(chan error)
 
@@ -124,7 +118,7 @@ func (printer *Printer) handshake() error {
 		defer close(errCh1)
 
 		for {
-			info, capabilities, err := parser.ParseM115(<-printer.context.QueueGcode("M115", false, true))
+			info, capabilities, err := parser.ParseM115(<-printer.context.QueueGcode("M115", true))
 			if err != nil {
 				log.Error(err)
 				continue
@@ -164,7 +158,7 @@ func (printer *Printer) readPort() {
 }
 
 func (printer *Printer) cleanup() {
-	for _, watcher := range printer.watchers.Get() {
+	for _, watcher := range printer.watchers.Load() {
 		watcher.stop()
 	}
 	printer.PrintManager.Cleanup(printer.context)
@@ -173,6 +167,7 @@ func (printer *Printer) cleanup() {
 
 func (printer *Printer) setup() error {
 
+	printer.context = newExecutorContext(printer, "main")
 	errorCh1, errorCh2 := make(chan error), make(chan error)
 
 	go func() {
@@ -192,11 +187,11 @@ func (printer *Printer) setup() error {
 			if !reportVelocity {
 				c |= 1 << 2
 			}
-			<-printer.context.QueueGcode("M155 S1 C"+strconv.Itoa(c), false, true)
+			<-printer.context.QueueGcode("M155 S1 C"+strconv.Itoa(c), true)
 		}
 
 		for {
-			ch := printer.context.QueueGcode("M503", false, true)
+			ch := printer.context.QueueGcode("M503", true)
 			limits, err := parser.ParseM503(<-ch)
 			if err != nil {
 				log.Println(err)
@@ -207,7 +202,9 @@ func (printer *Printer) setup() error {
 		}
 
 		tempWatcher := newTempWatcher(printer)
-		printer.watchers.Set(append(printer.watchers.Get(), tempWatcher))
+		printer.watchers.Do(func(watchers []watcher) []watcher {
+			return append(watchers, tempWatcher)
+		})
 		printer.heaters = <-tempWatcher.heatersCh
 
 		errorCh1 <- nil
@@ -236,7 +233,7 @@ func (printer *Printer) handleRequestLine(line string) {
 
 func (printer *Printer) handleResponseLine(line string) bool {
 
-	for _, watcher := range printer.watchers.Get() {
+	for _, watcher := range printer.watchers.Load() {
 		if watcher.handle(line) {
 			return true
 		}
@@ -274,7 +271,9 @@ func (printer *Printer) readLine(line string) {
 	if printer.handleResponseLine(line) {
 		return
 	}
-	printer.context.readLine(line)
+	if printer.context != nil {
+		printer.context.readLine(line)
+	}
 }
 
 func (printer *Printer) GetPrintManager() shared.PrintManager {

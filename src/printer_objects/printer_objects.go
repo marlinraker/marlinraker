@@ -23,6 +23,7 @@ var (
 	subscriptions      = make(map[string]Subscriptions)
 	subscriptionsMutex = &sync.RWMutex{}
 	lastEmitted        = make(map[*connections.Connection]map[string]QueryResult)
+	lastEmittedMutex   = &sync.RWMutex{}
 )
 
 func GetObjects() map[string]PrinterObject {
@@ -111,11 +112,13 @@ func Unsubscribe(connection *connections.Connection) {
 
 func getDiff(connection *connections.Connection, name string, result QueryResult) QueryResult {
 
+	lastEmittedMutex.Lock()
 	last, exists := lastEmitted[connection][name]
 	if _, exists := lastEmitted[connection]; !exists {
 		lastEmitted[connection] = make(map[string]QueryResult)
 	}
 	lastEmitted[connection][name] = result
+	lastEmittedMutex.Unlock()
 
 	if !exists {
 		return result

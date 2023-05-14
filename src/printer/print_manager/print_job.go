@@ -4,11 +4,12 @@ import (
 	"bufio"
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/files"
+	"marlinraker/src/printer/parser"
 	"marlinraker/src/shared"
+	"marlinraker/src/util"
 	"os"
 	"path/filepath"
-	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -16,36 +17,37 @@ type printJob struct {
 	manager        *PrintManager
 	fileName       string
 	filePath       string
-	pauseMutex     *sync.Mutex
-	isPaused       bool
-	isStarted      bool
-	hasEnded       bool
-	isCanceled     bool
+	pauseCh        chan struct{}
+	cancelCh       chan struct{}
+	isPaused       atomic.Bool
+	isStarted      atomic.Bool
+	hasEnded       atomic.Bool
 	scanner        *bufio.Scanner
-	position       int64
+	position       atomic.Int64
 	fileSize       int64
-	progress       float32
-	startTime      time.Time
-	lastResumeTime time.Time
-	endTime        time.Time
-	printDuration  time.Duration
+	progress       util.ThreadSafe[float32]
+	startTime      util.ThreadSafe[time.Time]
+	lastResumeTime util.ThreadSafe[time.Time]
+	endTime        util.ThreadSafe[time.Time]
+	printDuration  util.ThreadSafe[time.Duration]
 }
 
 func newPrintJob(manager *PrintManager, fileName string) *printJob {
 	filePath := filepath.Join(files.DataDir, "gcodes", fileName)
 	job := &printJob{
-		manager:    manager,
-		fileName:   fileName,
-		filePath:   filePath,
-		pauseMutex: &sync.Mutex{},
-		isPaused:   false,
-		isStarted:  false,
-		hasEnded:   false,
-		isCanceled: false,
-		position:   0,
-		fileSize:   0,
-		progress:   0,
+		manager:        manager,
+		fileName:       fileName,
+		filePath:       filePath,
+		pauseCh:        make(chan struct{}),
+		cancelCh:       make(chan struct{}),
+		fileSize:       0,
+		progress:       util.NewThreadSafe[float32](0),
+		startTime:      util.NewThreadSafe(time.Time{}),
+		lastResumeTime: util.NewThreadSafe(time.Time{}),
+		endTime:        util.NewThreadSafe(time.Time{}),
+		printDuration:  util.NewThreadSafe[time.Duration](0),
 	}
+	close(job.pauseCh)
 	return job
 }
 
@@ -62,14 +64,14 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 	}
 
 	now := time.Now()
-	job.startTime = now
-	job.lastResumeTime = now
-	job.isStarted = true
+	job.startTime.Store(now)
+	job.lastResumeTime.Store(now)
+	job.isStarted.Store(true)
 	job.scanner = bufio.NewScanner(reader)
 	job.fileSize = stat.Size()
-	job.printDuration = 0
-	job.position = 0
-	job.progress = 0
+	job.printDuration.Store(0)
+	job.position.Store(0)
+	job.progress.Store(0)
 
 	go func() {
 		defer func() {
@@ -79,61 +81,58 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 		}()
 
 		for job.scanner.Scan() {
-			if job.isCanceled {
-				return
-			}
-			if read, err := job.nextLine(); err != nil {
+			if read, canceled, err := job.nextLine(); err != nil {
 				log.Error(err)
 				return
 			} else {
-				job.position += read
-				job.progress = float32(job.position) / float32(job.fileSize)
+				position := job.position.Add(read)
+				job.progress.Store(float32(position) / float32(job.fileSize))
+				if canceled {
+					return
+				}
 			}
 		}
-		if err := job.finish(context); err != nil {
-			log.Error(err)
-		}
+		job.finish("complete", context)
 	}()
 
 	return nil
 }
 
-func (job *printJob) nextLine() (int64, error) {
-
-	context := job.manager.printer.MainExecutorContext()
-	for !context.Ready() {
-		<-context.CommandFinished()
-	}
-
-	job.pauseMutex.Lock()
-	job.pauseMutex.Unlock()
-
-	if job.isCanceled {
-		return 0, nil
-	}
+func (job *printJob) nextLine() (int64, bool, error) {
 
 	line := job.scanner.Text()
 	read := int64(len(line) + 1)
-	idx := strings.Index(line, ";")
-	if idx != -1 {
-		line = line[:idx]
-	}
-	line = strings.TrimSpace(line)
-	if line == "" {
-		return read, nil
+	gcode := parser.CleanGcode(line)
+	if gcode == "" {
+		return read, false, nil
 	}
 
-	<-context.QueueGcode(line, false, true)
-	return read, nil
+	context := job.manager.printer.MainExecutorContext()
+
+	select {
+	case <-context.Pending():
+	case <-job.cancelCh:
+		return read, true, nil
+	}
+
+	select {
+	case <-job.pauseCh:
+	case <-job.cancelCh:
+		return read, true, nil
+	}
+	<-context.QueueGcode(gcode, true)
+	return read, false, nil
 }
 
 func (job *printJob) pause(context shared.ExecutorContext) bool {
-	if !job.isPaused {
-		job.isPaused = true
-		job.pauseMutex.Lock()
+	if !job.isPaused.Load() {
+		job.isPaused.Store(true)
+		job.pauseCh = make(chan struct{})
 		job.waitForPrintMoves(context)
 		now := time.Now()
-		job.printDuration += now.Sub(job.lastResumeTime)
+		job.printDuration.Do(func(duration time.Duration) time.Duration {
+			return duration + now.Sub(job.lastResumeTime.Load())
+		})
 		job.manager.setState("paused")
 		return true
 	}
@@ -141,11 +140,11 @@ func (job *printJob) pause(context shared.ExecutorContext) bool {
 }
 
 func (job *printJob) resume(context shared.ExecutorContext) bool {
-	if job.isPaused {
+	if job.isPaused.Load() {
 		job.waitForPrintMoves(context)
-		job.isPaused = false
-		job.pauseMutex.Unlock()
-		job.lastResumeTime = time.Now()
+		job.isPaused.Store(false)
+		close(job.pauseCh)
+		job.lastResumeTime.Store(time.Now())
 		job.manager.setState("printing")
 		return true
 	}
@@ -153,55 +152,46 @@ func (job *printJob) resume(context shared.ExecutorContext) bool {
 }
 
 func (job *printJob) cancel(context shared.ExecutorContext) bool {
-	if job.isCanceled {
+	if job.hasEnded.Load() || !job.isStarted.Load() {
 		return false
 	}
-	job.isCanceled = true
-
-	if job.isPaused {
-		job.isPaused = false
-		job.pauseMutex.Unlock()
-	}
-
-	job.waitForPrintMoves(context)
-	now := time.Now()
-	job.progress = 1
-	job.hasEnded = true
-	job.endTime = now
-	job.lastResumeTime = now
-	job.manager.setState("cancelled")
+	close(job.cancelCh)
+	job.finish("cancelled", context)
 	return true
 }
 
-func (job *printJob) finish(context shared.ExecutorContext) error {
+func (job *printJob) finish(state string, context shared.ExecutorContext) {
 	job.waitForPrintMoves(context)
 	now := time.Now()
-	job.progress = 1
-	job.hasEnded = true
-	job.endTime = now
-	job.printDuration += now.Sub(job.lastResumeTime)
-	job.manager.setState("complete")
-	return nil
+	job.progress.Store(1)
+	job.hasEnded.Store(true)
+	job.endTime.Store(now)
+	if !job.isPaused.Load() {
+		job.printDuration.Do(func(duration time.Duration) time.Duration {
+			return duration + now.Sub(job.lastResumeTime.Load())
+		})
+	}
+	job.manager.setState(state)
 }
 
 func (job *printJob) waitForPrintMoves(context shared.ExecutorContext) {
-	<-context.QueueGcode("M400", false, true)
+	<-context.QueueGcode("M400", true)
 }
 
 func (job *printJob) getTotalTime() time.Duration {
-	if job.hasEnded {
-		return job.endTime.Sub(job.startTime)
+	if job.hasEnded.Load() {
+		return job.endTime.Load().Sub(job.startTime.Load())
 	} else {
 		now := time.Now()
-		return now.Sub(job.startTime)
+		return now.Sub(job.startTime.Load())
 	}
 }
 
 func (job *printJob) getPrintTime() time.Duration {
-	duration := job.printDuration
-	if !job.isPaused && !job.hasEnded {
+	duration := job.printDuration.Load()
+	if !job.isPaused.Load() && !job.hasEnded.Load() {
 		now := time.Now()
-		duration += now.Sub(job.lastResumeTime)
+		duration += now.Sub(job.lastResumeTime.Load())
 	}
 	return duration
 }
