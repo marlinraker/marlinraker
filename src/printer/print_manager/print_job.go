@@ -2,7 +2,6 @@ package print_manager
 
 import (
 	"bufio"
-	log "github.com/sirupsen/logrus"
 	"marlinraker/src/files"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/shared"
@@ -76,13 +75,13 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 	go func() {
 		defer func() {
 			if err := reader.Close(); err != nil {
-				log.Error(err)
+				util.LogError(err)
 			}
 		}()
 
 		for job.scanner.Scan() {
 			if read, canceled, err := job.nextLine(); err != nil {
-				log.Error(err)
+				util.LogError(err)
 				return
 			} else {
 				position := job.position.Add(read)

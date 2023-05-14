@@ -7,6 +7,7 @@ import (
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/util"
 	"net/http"
 	"strconv"
 	"strings"
@@ -113,24 +114,24 @@ func (HttpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
 
 	case requestPath == "":
 		if err := handleIndex(writer, request); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 
 	case requestPath == "/websocket":
 		if err := handleSocket(writer, request); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 
 	case isFilePath(requestPath) && (request.Method == "GET" || request.Method == "DELETE"):
 		if request.Method == "GET" {
 			handleFileDownload(writer, request)
 		} else if err := handleFileDelete(writer, request); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 
 	default:
 		if err := handleHttp(writer, request); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}
 }

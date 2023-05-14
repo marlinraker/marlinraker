@@ -10,6 +10,7 @@ import (
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/scanner"
 	"marlinraker/src/system_info"
+	"marlinraker/src/util"
 	"path/filepath"
 	"strconv"
 )
@@ -73,12 +74,12 @@ func SetState(state KlippyState, message string) {
 	if state == Ready || state == Shutdown {
 		notify := notification.New("notify_klippy_"+string(state), []any{})
 		if err := notification.Publish(notify); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}
 
 	if err := printer_objects.EmitObject("webhooks"); err != nil {
-		log.Error(err)
+		util.LogError(err)
 	}
 }
 

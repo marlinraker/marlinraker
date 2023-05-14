@@ -98,7 +98,7 @@ func (printer *Printer) tryToConnect() error {
 	for i := 0; i < maxAttempts; i++ {
 		if err := printer.handshake(i); err != nil {
 			if i < maxAttempts-1 {
-				log.Error(err)
+				util.LogError(err)
 				log.Println("Retrying... (" + strconv.Itoa(maxAttempts-i-1) + " attempt(s) left)")
 			}
 			continue
@@ -120,7 +120,7 @@ func (printer *Printer) handshake(attempt int) error {
 		for {
 			info, capabilities, err := parser.ParseM115(<-printer.context.QueueGcode("M115", true))
 			if err != nil {
-				log.Error(err)
+				util.LogError(err)
 				continue
 			}
 
@@ -227,7 +227,7 @@ func (printer *Printer) setup() error {
 
 func (printer *Printer) handleRequestLine(line string) {
 	if err := printer.GcodeState.update(line); err != nil {
-		log.Error(err)
+		util.LogError(err)
 	}
 }
 
@@ -247,7 +247,7 @@ func (printer *Printer) handleResponseLine(line string) bool {
 
 		err := notification.Publish(notification.New("notify_gcode_response", []any{message}))
 		if err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 
 		gcode_store.LogNow(message, gcode_store.Response)

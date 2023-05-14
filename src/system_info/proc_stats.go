@@ -2,9 +2,9 @@ package system_info
 
 import (
 	"github.com/samber/lo"
-	log "github.com/sirupsen/logrus"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/util"
 	"sync"
 	"time"
 )
@@ -45,13 +45,13 @@ func Run() {
 	var err error
 	lastTimes, err = getCpuTimes()
 	if err != nil {
-		log.Error(err)
+		util.LogError(err)
 		return
 	}
 
 	lastNetworkStats, err = getNetworkStats(nil)
 	if err != nil {
-		log.Error(err)
+		util.LogError(err)
 		return
 	}
 
@@ -60,7 +60,7 @@ func Run() {
 		<-ticker.C
 		err = takeSnapshot()
 		if err != nil {
-			log.Error(err)
+			util.LogError(err)
 			break
 		}
 	}

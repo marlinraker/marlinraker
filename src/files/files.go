@@ -5,7 +5,6 @@ import (
 	"compress/flate"
 	"errors"
 	"github.com/samber/lo"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"io"
 	"io/fs"
@@ -211,7 +210,7 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 	}
 	defer func() {
 		if err := archive.Close(); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}()
 
@@ -299,7 +298,7 @@ func writeFileToArchive(zipWriter *zip.Writer, fileName string, diskPath string)
 	}
 	defer func() {
 		if err := reader.Close(); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}()
 

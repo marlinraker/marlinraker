@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/util"
@@ -41,7 +40,7 @@ func Upload(rootName string, path string, checksum string, header *multipart.Fil
 
 	defer func() {
 		if err := sourceFile.Close(); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}()
 
@@ -71,7 +70,7 @@ func Upload(rootName string, path string, checksum string, header *multipart.Fil
 
 	defer func() {
 		if err := destFile.Close(); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}()
 
@@ -161,7 +160,7 @@ func calculateChecksum(filePath string) (string, error) {
 
 	defer func() {
 		if err := file.Close(); err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}()
 

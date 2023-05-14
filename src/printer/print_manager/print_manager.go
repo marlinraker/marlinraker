@@ -2,7 +2,6 @@ package print_manager
 
 import (
 	"errors"
-	log "github.com/sirupsen/logrus"
 	"marlinraker/src/files"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
@@ -163,9 +162,9 @@ func (manager *PrintManager) setState(state string) {
 
 func (manager *PrintManager) emit() {
 	if err := printer_objects.EmitObject("print_stats"); err != nil {
-		log.Error(err)
+		util.LogError(err)
 	}
 	if err := printer_objects.EmitObject("virtual_sdcard"); err != nil {
-		log.Error(err)
+		util.LogError(err)
 	}
 }

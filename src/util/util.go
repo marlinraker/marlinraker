@@ -1,6 +1,9 @@
 package util
 
 import (
+	log "github.com/sirupsen/logrus"
+	"runtime/debug"
+	"strings"
 	"sync"
 )
 
@@ -87,4 +90,12 @@ func (ts *threadSafe[T]) RLock() {
 
 func (ts *threadSafe[T]) RUnlock() {
 	ts.mutex.RUnlock()
+}
+
+func LogError(err error) {
+	stack := string(debug.Stack())
+	lines := strings.Split(stack, "\n")
+	lines = append(lines[:1], lines[5:len(lines)-1]...)
+	stack = strings.Join(lines, "\n")
+	log.Error("Error: " + err.Error() + "\n" + stack)
 }

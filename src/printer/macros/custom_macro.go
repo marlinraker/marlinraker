@@ -2,8 +2,8 @@ package macros
 
 import (
 	"github.com/Masterminds/sprig/v3"
-	log "github.com/sirupsen/logrus"
 	"marlinraker/src/shared"
+	"marlinraker/src/util"
 	"strings"
 	"text/template"
 )
@@ -34,14 +34,14 @@ type macroContext struct {
 
 func (context macroContext) ActionRespondInfo(message string) string {
 	if err := context.manager.printer.Respond("// " + message); err != nil {
-		log.Error(err)
+		util.LogError(err)
 	}
 	return ""
 }
 
 func (context macroContext) ActionRaiseError(message string) string {
 	if err := context.manager.printer.Respond("!! " + message); err != nil {
-		log.Error(err)
+		util.LogError(err)
 	}
 	return ""
 }

@@ -58,13 +58,13 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) error {
 	}
 
 	result, err := executor(nil, request, params)
-	return writeExecutorResponse(writer, result, err)
+	return writeExecutorResponse(writer, method, url, result, err)
 }
 
-func writeExecutorResponse(writer http.ResponseWriter, result any, err error) error {
+func writeExecutorResponse(writer http.ResponseWriter, method string, url string, result any, err error) error {
 
 	if err != nil {
-		log.Error(err)
+		log.Errorln("Error while executing "+method+" "+url+":", err)
 		code := 500
 		if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
 			code = executorError.Code
@@ -109,5 +109,5 @@ func handleFileDelete(writer http.ResponseWriter, request *http.Request) error {
 	root := strings.Split(path, "/")[0]
 	file := strings.TrimPrefix(filepath.Clean(path[len(root):]), "/")
 	result, err := files.DeleteFile(root, file)
-	return writeExecutorResponse(writer, result, err)
+	return writeExecutorResponse(writer, request.Method, request.URL.Path, result, err)
 }

@@ -6,6 +6,7 @@ import (
 	"marlinraker/src/marlinraker/gcode_store"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/shared"
+	"marlinraker/src/util"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -180,7 +181,7 @@ func (context *executorContext) flush(cmd command) {
 		if err := <-context.printer.MacroManager.ExecuteMacro(macro, subContext, cmd.gcode); err != nil {
 			message := "!! Error: " + err.Error()
 			if err := context.printer.Respond(message); err != nil {
-				log.Error(err)
+				util.LogError(err)
 			}
 		}
 		context.ReleaseSubContext()
@@ -197,6 +198,6 @@ func (context *executorContext) flush(cmd command) {
 
 	_, err := context.printer.port.Write([]byte(cmd.gcode + "\n"))
 	if err != nil {
-		log.Error(err)
+		util.LogError(err)
 	}
 }

@@ -56,7 +56,7 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 		var request RpcRequest
 		err = json.Unmarshal(message, &request)
 		if err != nil {
-			log.Error(err)
+			util.LogError(err)
 			continue
 		}
 
@@ -68,14 +68,14 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 				Rpc:   request.Rpc,
 			})
 			if err != nil {
-				log.Error(err)
+				util.LogError(err)
 			}
 			continue
 		}
 
 		result, err := executor(connection, nil, request.Params)
 		if err != nil {
-			log.Error(err)
+			log.Errorln("Error while executing "+request.Method+":", err)
 			code := 500
 			if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
 				code = executorError.Code
@@ -85,14 +85,14 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 				Rpc:   request.Rpc,
 			})
 			if err != nil {
-				log.Error(err)
+				util.LogError(err)
 			}
 			continue
 		}
 
 		err = connection.WriteJson(&RpcResultResponse{request.Rpc, result})
 		if err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}
 

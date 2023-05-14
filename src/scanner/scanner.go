@@ -5,6 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go.bug.st/serial"
 	"marlinraker/src/config"
+	"marlinraker/src/util"
 	"strconv"
 	"time"
 )
@@ -16,7 +17,7 @@ func FindSerialPort(config *config.Config) (string, int64) {
 	if config.Serial.Port == "" || config.Serial.Port == "auto" {
 		ports, err = serial.GetPortsList()
 		if err != nil {
-			log.Error(err)
+			util.LogError(err)
 			return "", 0
 		}
 	} else {
@@ -51,20 +52,17 @@ func tryPort(path string, baudRate int, connectionTimeout int) bool {
 
 	port, err := serial.Open(path, &serial.Mode{BaudRate: baudRate})
 	if err != nil {
-		log.Error(err)
 		return false
 	}
 
 	defer func(port serial.Port) {
 		err := port.Close()
 		if err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}(port)
 
-	_, err = port.Write([]byte("M110 N0\n"))
-	if err != nil {
-		log.Error(err)
+	if _, err = port.Write([]byte("M110 N0\n")); err != nil {
 		return false
 	}
 

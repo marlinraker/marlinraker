@@ -1,10 +1,10 @@
 package printer
 
 import (
-	log "github.com/sirupsen/logrus"
 	"marlinraker/src/marlinraker/temp_store"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/printer_objects"
+	"marlinraker/src/util"
 	"math"
 	"regexp"
 	"sync"
@@ -107,14 +107,14 @@ func (watcher *tempWatcher) tick() {
 	for name := range watcher.heaterObjects {
 		err := printer_objects.EmitObject(name)
 		if err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}
 
 	for name := range watcher.sensorObjects {
 		err := printer_objects.EmitObject(name)
 		if err != nil {
-			log.Error(err)
+			util.LogError(err)
 		}
 	}
 
@@ -150,7 +150,7 @@ func (watcher *tempWatcher) parseTemps(data string) {
 
 	temps, err := parser.ParseM105(data)
 	if err != nil {
-		log.Error(err)
+		util.LogError(err)
 		return
 	}
 
