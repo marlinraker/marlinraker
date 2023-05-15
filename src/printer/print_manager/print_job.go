@@ -2,12 +2,14 @@ package print_manager
 
 import (
 	"bufio"
+	"io"
 	"marlinraker/src/files"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/shared"
 	"marlinraker/src/util"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -21,7 +23,7 @@ type printJob struct {
 	isPaused       atomic.Bool
 	isStarted      atomic.Bool
 	hasEnded       atomic.Bool
-	scanner        *bufio.Scanner
+	reader         *bufio.Reader
 	position       atomic.Int64
 	fileSize       int64
 	progress       util.ThreadSafe[float32]
@@ -57,7 +59,7 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 		return err
 	}
 
-	reader, err := files.Fs.OpenFile(job.filePath, os.O_RDONLY, 0)
+	file, err := files.Fs.OpenFile(job.filePath, os.O_RDONLY, 0)
 	if err != nil {
 		return err
 	}
@@ -66,44 +68,52 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 	job.startTime.Store(now)
 	job.lastResumeTime.Store(now)
 	job.isStarted.Store(true)
-	job.scanner = bufio.NewScanner(reader)
 	job.fileSize = stat.Size()
 	job.printDuration.Store(0)
 	job.position.Store(0)
 	job.progress.Store(0)
 
+	reader := bufio.NewReader(file)
+
 	go func() {
 		defer func() {
-			if err := reader.Close(); err != nil {
+			if err := file.Close(); err != nil {
 				util.LogError(err)
 			}
 		}()
 
-		for job.scanner.Scan() {
-			if read, canceled, err := job.nextLine(); err != nil {
-				util.LogError(err)
-				return
-			} else {
-				position := job.position.Add(read)
-				job.progress.Store(float32(position) / float32(job.fileSize))
-				if canceled {
-					return
+		for {
+			bytes, err := reader.ReadBytes('\n')
+			if err != nil {
+				if err != io.EOF {
+					util.LogError(err)
 				}
+				break
+			}
+
+			read, line := int64(len(bytes)), strings.TrimRight(string(bytes), "\r\n")
+			position := job.position.Add(read)
+			job.progress.Store(float32(position) / float32(job.fileSize))
+
+			if canceled, err := job.nextLine(line); err != nil || canceled {
+				if err != nil {
+					util.LogError(err)
+				}
+				return
 			}
 		}
+
 		job.finish("complete", context)
 	}()
 
 	return nil
 }
 
-func (job *printJob) nextLine() (int64, bool, error) {
+func (job *printJob) nextLine(line string) (bool, error) {
 
-	line := job.scanner.Text()
-	read := int64(len(line) + 1)
 	gcode := parser.CleanGcode(line)
 	if gcode == "" {
-		return read, false, nil
+		return false, nil
 	}
 
 	context := job.manager.printer.MainExecutorContext()
@@ -111,16 +121,16 @@ func (job *printJob) nextLine() (int64, bool, error) {
 	select {
 	case <-context.Pending():
 	case <-job.cancelCh:
-		return read, true, nil
+		return true, nil
 	}
 
 	select {
 	case <-job.pauseCh:
 	case <-job.cancelCh:
-		return read, true, nil
+		return true, nil
 	}
 	<-context.QueueGcode(gcode, true)
-	return read, false, nil
+	return false, nil
 }
 
 func (job *printJob) pause(context shared.ExecutorContext) bool {
