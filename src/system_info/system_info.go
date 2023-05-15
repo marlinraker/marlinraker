@@ -1,5 +1,7 @@
 package system_info
 
+import "marlinraker/src/system_info/procfs"
+
 type serviceState struct {
 	ActiveState string `json:"active_state"`
 	SubState    string `json:"sub_state"`
@@ -11,31 +13,31 @@ type virtualization struct {
 }
 
 type SystemInfo struct {
-	CpuInfo           *cpuInfo                `json:"cpu_info"`
-	SdInfo            *sdInfo                 `json:"sd_info"`
-	Distribution      *distribution           `json:"distribution"`
-	AvailableServices []string                `json:"available_services"`
-	InstanceIds       map[string]string       `json:"instance_ids"`
-	ServiceState      map[string]serviceState `json:"service_state"`
-	Virtualization    *virtualization         `json:"virtualization"`
-	Network           map[string]network      `json:"network"`
+	CpuInfo           *procfs.CpuInfo           `json:"cpu_info"`
+	SdInfo            *procfs.SdInfo            `json:"sd_info"`
+	Distribution      *procfs.Distribution      `json:"distribution"`
+	AvailableServices []string                  `json:"available_services"`
+	InstanceIds       map[string]string         `json:"instance_ids"`
+	ServiceState      map[string]serviceState   `json:"service_state"`
+	Virtualization    *virtualization           `json:"virtualization"`
+	Network           map[string]procfs.Network `json:"network"`
 }
 
 func GetSystemInfo() (*SystemInfo, error) {
 
-	cpuInfo, err := getCpuInfo()
+	cpuInfo, err := procfs.GetCpuInfo()
 	if err != nil {
 		return nil, err
 	}
 
-	sdInfo, _ := getSdInfo()
+	sdInfo, _ := procfs.GetSdInfo()
 
-	distribution, err := getDistribution()
+	distribution, err := procfs.GetDistribution()
 	if err != nil {
 		return nil, err
 	}
 
-	network, err := getNetwork()
+	network, err := procfs.GetNetwork()
 	if err != nil {
 		return nil, err
 	}

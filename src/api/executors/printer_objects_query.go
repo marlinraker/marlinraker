@@ -5,10 +5,10 @@ import (
 	"github.com/samber/lo"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/printer_objects"
+	"marlinraker/src/system_info/procfs"
 	"marlinraker/src/util"
 	"net/http"
 	"strings"
-	"time"
 )
 
 type PrinterObjectsQueryResult struct {
@@ -18,8 +18,13 @@ type PrinterObjectsQueryResult struct {
 
 func PrinterObjectsQueryHttp(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 
+	eventTime, err := procfs.GetUptime()
+	if err != nil {
+		return nil, err
+	}
+
 	results := PrinterObjectsQueryResult{
-		EventTime: float64(time.Now().UnixMilli()) / 1000.0,
+		EventTime: eventTime,
 		Status:    make(map[string]printer_objects.QueryResult),
 	}
 
@@ -46,8 +51,13 @@ func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, param
 		return nil, util.NewError("objects param is required", 400)
 	}
 
+	eventTime, err := procfs.GetUptime()
+	if err != nil {
+		return nil, err
+	}
+
 	results := PrinterObjectsQueryResult{
-		EventTime: float64(time.Now().UnixMilli()) / 1000.0,
+		EventTime: eventTime,
 		Status:    make(map[string]printer_objects.QueryResult),
 	}
 

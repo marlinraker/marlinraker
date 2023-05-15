@@ -1,4 +1,4 @@
-package system_info
+package procfs
 
 import (
 	"encoding/hex"
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type sdInfo struct {
+type SdInfo struct {
 	ManufacturerId   string `json:"manufacturer_id,omitempty"`
 	Manufacturer     string `json:"manufacturer,omitempty"`
 	OemId            string `json:"oem_id,omitempty"`
@@ -26,13 +26,13 @@ var manufacturers = map[string]string{
 	"74": "PNY",
 }
 
-func getSdInfo() (*sdInfo, error) {
+func GetSdInfo() (*SdInfo, error) {
 	return getSdInfoImpl("/sys/block/mmcblk0/device/cid", "/sys/block/mmcblk0/device/csd")
 }
 
-func getSdInfoImpl(cidPath string, csdPath string) (*sdInfo, error) {
+func getSdInfoImpl(cidPath string, csdPath string) (*SdInfo, error) {
 
-	info := &sdInfo{}
+	info := &SdInfo{}
 
 	cidBytes, err := os.ReadFile(cidPath)
 	if err != nil {

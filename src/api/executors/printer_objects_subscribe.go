@@ -5,11 +5,11 @@ import (
 	"github.com/samber/lo"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/printer_objects"
+	"marlinraker/src/system_info/procfs"
 	"marlinraker/src/util"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type PrinterObjectsSubscribeResult struct {
@@ -69,8 +69,13 @@ func PrinterObjectsSubscribeSocket(connection *connections.Connection, _ *http.R
 
 func subscribe(connection *connections.Connection, subscriptions map[string][]string) (any, error) {
 
+	eventTime, err := procfs.GetUptime()
+	if err != nil {
+		return nil, err
+	}
+
 	results := PrinterObjectsSubscribeResult{
-		EventTime: float64(time.Now().UnixMilli()) / 1000.0,
+		EventTime: eventTime,
 		Status:    make(map[string]printer_objects.QueryResult),
 	}
 

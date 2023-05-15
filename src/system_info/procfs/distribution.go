@@ -1,4 +1,4 @@
-package system_info
+package procfs
 
 import (
 	"os"
@@ -12,7 +12,7 @@ type versionParts struct {
 	BuildNumber string `json:"build_number"`
 }
 
-type distribution struct {
+type Distribution struct {
 	Name         string       `json:"name"`
 	Id           string       `json:"id"`
 	Version      string       `json:"version"`
@@ -29,13 +29,13 @@ var (
 	versionCodenameRegex = regexp.MustCompile(`(?m)^VERSION_CODENAME="?(.+?)"?$`)
 )
 
-func getDistribution() (*distribution, error) {
+func GetDistribution() (*Distribution, error) {
 	return getDistributionImpl("/etc/os-release")
 }
 
-func getDistributionImpl(osReleasePath string) (*distribution, error) {
+func getDistributionImpl(osReleasePath string) (*Distribution, error) {
 
-	info := &distribution{}
+	info := &Distribution{}
 
 	osReleaseBytes, err := os.ReadFile(osReleasePath)
 	if err != nil {

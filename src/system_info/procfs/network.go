@@ -1,4 +1,4 @@
-package system_info
+package procfs
 
 import (
 	"github.com/samber/lo"
@@ -10,20 +10,20 @@ import (
 	"time"
 )
 
-type ipAddress struct {
+type IpAddress struct {
 	Family      string `json:"family"`
 	Address     string `json:"address"`
 	IsLinkLocal bool   `json:"is_link_local"`
 }
 
-type network struct {
+type Network struct {
 	MacAddress  string      `json:"mac_address"`
-	IpAddresses []ipAddress `json:"ip_addresses"`
+	IpAddresses []IpAddress `json:"ip_addresses"`
 }
 
-func getNetwork() (map[string]network, error) {
+func GetNetwork() (map[string]Network, error) {
 
-	networks := make(map[string]network)
+	networks := make(map[string]Network)
 
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -37,12 +37,12 @@ func getNetwork() (map[string]network, error) {
 			return networks, err
 		}
 
-		networks[iface.Name] = network{
+		networks[iface.Name] = Network{
 			MacAddress: iface.HardwareAddr.String(),
-			IpAddresses: lo.Map(addresses, func(address net.Addr, _ int) ipAddress {
+			IpAddresses: lo.Map(addresses, func(address net.Addr, _ int) IpAddress {
 
 				if ipv4 := address.(*net.IPNet).IP.To4(); ipv4 != nil {
-					return ipAddress{
+					return IpAddress{
 						Address:     ipv4.String(),
 						Family:      "ipv4",
 						IsLinkLocal: ipv4.IsLinkLocalUnicast() || ipv4.IsLinkLocalMulticast(),
@@ -50,14 +50,14 @@ func getNetwork() (map[string]network, error) {
 				}
 
 				if ipv6 := address.(*net.IPNet).IP.To16(); ipv6 != nil {
-					return ipAddress{
+					return IpAddress{
 						Address:     ipv6.String(),
 						Family:      "ipv6",
 						IsLinkLocal: ipv6.IsLinkLocalUnicast() || ipv6.IsLinkLocalMulticast(),
 					}
 				}
 
-				return ipAddress{}
+				return IpAddress{}
 			}),
 		}
 	}
@@ -71,10 +71,10 @@ type ifaceStats struct {
 	Bandwidth float64 `json:"bandwidth"`
 }
 
-type networkStats map[string]ifaceStats
+type NetworkStats map[string]ifaceStats
 
-type timedNetworkStats struct {
-	Stats networkStats
+type TimedNetworkStats struct {
+	Stats NetworkStats
 	Time  float64
 }
 
@@ -83,12 +83,12 @@ var (
 	whitespaceRegex = regexp.MustCompile(`\s+`)
 )
 
-func getNetworkStats(lastStats *timedNetworkStats) (*timedNetworkStats, error) {
+func GetNetworkStats(lastStats *TimedNetworkStats) (*TimedNetworkStats, error) {
 	now := float64(time.Now().UnixMilli()) / 1000.0
 	return getNetworkStatsImpl(lastStats, now, "/proc/net/dev")
 }
 
-func getNetworkStatsImpl(lastStats *timedNetworkStats, now float64, procNetDevPath string) (*timedNetworkStats, error) {
+func getNetworkStatsImpl(lastStats *TimedNetworkStats, now float64, procNetDevPath string) (*TimedNetworkStats, error) {
 
 	procNetDevBytes, err := os.ReadFile(procNetDevPath)
 	if err != nil {
@@ -96,7 +96,7 @@ func getNetworkStatsImpl(lastStats *timedNetworkStats, now float64, procNetDevPa
 	}
 	procNetDev := string(procNetDevBytes)
 
-	stats := make(networkStats)
+	stats := make(NetworkStats)
 	if matches := ifaceRegex.FindAllStringSubmatch(procNetDev, -1); matches != nil {
 		for _, match := range matches {
 
@@ -121,5 +121,5 @@ func getNetworkStatsImpl(lastStats *timedNetworkStats, now float64, procNetDevPa
 		}
 	}
 
-	return &timedNetworkStats{Stats: stats, Time: now}, nil
+	return &TimedNetworkStats{Stats: stats, Time: now}, nil
 }

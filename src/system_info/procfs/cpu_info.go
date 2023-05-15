@@ -1,4 +1,4 @@
-package system_info
+package procfs
 
 import (
 	"math"
@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-type cpuInfo struct {
+type CpuInfo struct {
 	CpuCount     int    `json:"cpu_count"`
 	Bits         string `json:"bits"`
 	Processor    string `json:"processor"`
@@ -29,13 +29,13 @@ var (
 	processorRegex = regexp.MustCompile(`(?m)^processor\s*: [0-9]+$`)
 )
 
-func getCpuInfo() (*cpuInfo, error) {
+func GetCpuInfo() (*CpuInfo, error) {
 	return getCpuInfoImpl("/proc/cpuinfo", "/proc/meminfo")
 }
 
-func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*cpuInfo, error) {
+func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*CpuInfo, error) {
 
-	info := &cpuInfo{}
+	info := &CpuInfo{}
 
 	cpuInfoBytes, err := os.ReadFile(cpuInfoPath)
 	if err != nil {
@@ -85,17 +85,17 @@ func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*cpuInfo, error) {
 	return info, nil
 }
 
-type cpuTimes = map[string][]int64
+type CpuTimes = map[string][]int64
 
 var cpuRegex = regexp.MustCompile(`(?m)^(cpu[0-9]*)\s*(.*)$`)
 
-func getCpuTimes() (cpuTimes, error) {
+func GetCpuTimes() (CpuTimes, error) {
 	return getCpuTimesImpl("/proc/stat")
 }
 
-func getCpuTimesImpl(procStatPath string) (cpuTimes, error) {
+func getCpuTimesImpl(procStatPath string) (CpuTimes, error) {
 
-	times := make(cpuTimes)
+	times := make(CpuTimes)
 
 	procStatBytes, err := os.ReadFile(procStatPath)
 	if err != nil {
@@ -125,11 +125,11 @@ func getCpuTimesImpl(procStatPath string) (cpuTimes, error) {
 	return times, nil
 }
 
-type cpuUsage = map[string]float64
+type CpuUsage = map[string]float64
 
-func getCpuUsage(lastTimes cpuTimes, currentTimes cpuTimes) cpuUsage {
+func GetCpuUsage(lastTimes CpuTimes, currentTimes CpuTimes) CpuUsage {
 
-	usage := make(cpuUsage)
+	usage := make(CpuUsage)
 
 	for cpu, current := range currentTimes {
 		var (
@@ -149,7 +149,7 @@ func getCpuUsage(lastTimes cpuTimes, currentTimes cpuTimes) cpuUsage {
 	return usage
 }
 
-func getCpuTemp() (float64, error) {
+func GetCpuTemp() (float64, error) {
 	return getCpuTempImpl("/sys/class/thermal/thermal_zone0/temp")
 }
 

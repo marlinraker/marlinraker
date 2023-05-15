@@ -1,6 +1,7 @@
-package system_info
+package procfs
 
 import (
+	"errors"
 	"os"
 	"regexp"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 var (
 	totalMemRegex = regexp.MustCompile(`(?m)^MemTotal:\s*([0-9]+) ([A-Za-z]+)$`)
 	freeMemRegex  = regexp.MustCompile(`(?m)^MemFree:\s*([0-9]+) ([A-Za-z]+)$`)
+	memAvailRegex = regexp.MustCompile(`(?m)^MemAvailable:\s*([0-9]+) kB$`)
 )
 
 func getTotalMemImpl(memInfoPath string) (int64, string, error) {
@@ -21,7 +23,7 @@ func getTotalMemImpl(memInfoPath string) (int64, string, error) {
 	return getMemory(memInfo, totalMemRegex)
 }
 
-func getUsedMem() (int64, string, error) {
+func GetUsedMem() (int64, string, error) {
 	return getUsedMemImpl("/proc/meminfo")
 }
 
@@ -56,4 +58,20 @@ func getMemory(memInfo string, regex *regexp.Regexp) (int64, string, error) {
 	} else {
 		return 0, "B", nil
 	}
+}
+
+func GetMemAvail() (int64, error) {
+	return getMemAvailImpl("/proc/meminfo")
+}
+
+func getMemAvailImpl(memInfoPath string) (int64, error) {
+	memInfoBytes, err := os.ReadFile(memInfoPath)
+	if err != nil {
+		return 0, err
+	}
+
+	if match := memAvailRegex.FindStringSubmatch(string(memInfoBytes)); match != nil {
+		return strconv.ParseInt(match[1], 10, 64)
+	}
+	return 0, errors.New("malformed meminfo")
 }

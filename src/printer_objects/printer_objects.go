@@ -4,9 +4,9 @@ import (
 	"errors"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/system_info/procfs"
 	"reflect"
 	"sync"
-	"time"
 )
 
 type QueryResult map[string]any
@@ -52,7 +52,11 @@ func EmitObject(name string) error {
 	if err != nil {
 		return err
 	}
-	eventTime := float64(time.Now().UnixMilli()) / 1000.0
+
+	eventTime, err := procfs.GetUptime()
+	if err != nil {
+		return err
+	}
 
 	for connection, attributes := range subscriptions[name] {
 		diff := getDiff(connection, name, result)

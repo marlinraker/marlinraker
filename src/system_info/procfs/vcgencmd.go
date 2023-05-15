@@ -1,4 +1,4 @@
-package system_info
+package procfs
 
 import (
 	"os/exec"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type throttledState struct {
+type ThrottledState struct {
 	Bits  int32    `json:"bits"`
 	Flags []string `json:"flags"`
 }
@@ -22,19 +22,19 @@ var bitFlags = map[int]string{
 	19: "Previously Temperature Limited",
 }
 
-func getThrottledState() (throttledState, error) {
+func GetThrottledState() (ThrottledState, error) {
 	throttledBytes, err := exec.Command("vcgencmd", "get_throttled").Output()
 	if err != nil {
-		return throttledState{0, []string{}}, err
+		return ThrottledState{0, []string{}}, err
 	}
 	return getThrottledStateImpl(throttledBytes)
 }
 
-func getThrottledStateImpl(throttledBytes []byte) (throttledState, error) {
+func getThrottledStateImpl(throttledBytes []byte) (ThrottledState, error) {
 	throttledStr := strings.TrimSpace(string(throttledBytes))[12:]
 	bits, err := strconv.ParseInt(throttledStr, 16, 32)
 	if err != nil {
-		return throttledState{0, []string{}}, err
+		return ThrottledState{0, []string{}}, err
 	}
 
 	flags := make([]string, 0)
@@ -44,5 +44,5 @@ func getThrottledStateImpl(throttledBytes []byte) (throttledState, error) {
 		}
 	}
 
-	return throttledState{Bits: int32(bits), Flags: flags}, nil
+	return ThrottledState{Bits: int32(bits), Flags: flags}, nil
 }

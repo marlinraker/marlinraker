@@ -1,4 +1,4 @@
-package system_info
+package procfs
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func getUptime() (float64, error) {
+func GetUptime() (float64, error) {
 
 	uptimeBytes, err := os.ReadFile("/proc/uptime")
 	if err != nil {
