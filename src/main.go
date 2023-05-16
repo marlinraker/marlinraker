@@ -27,7 +27,7 @@ func main() {
 	}
 
 	files.DataDir = dataDir
-	if err := files.CreateFileRoots(); err != nil {
+	if err := files.Init(); err != nil {
 		panic(err)
 	}
 

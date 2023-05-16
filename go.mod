@@ -8,6 +8,7 @@ require (
 	github.com/antonfisher/nested-logrus-formatter v1.3.1
 	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/websocket v1.5.0
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/rs/cors v1.9.0
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.0

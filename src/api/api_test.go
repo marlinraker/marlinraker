@@ -42,7 +42,7 @@ func TestApi(t *testing.T) {
 	}
 
 	files.Fs = afero.NewCopyOnWriteFs(afero.NewReadOnlyFs(afero.NewOsFs()), afero.NewMemMapFs())
-	err = files.CreateFileRoots()
+	err = files.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,13 +496,19 @@ func TestApi(t *testing.T) {
 		}
 
 		assert.DeepEqual(t, result, &executors.ServerFilesGetDirectoryResult{
-			Dirs:     []files.DirectoryMeta{{DirName: "foo", Permissions: "rw"}},
-			Files:    []files.FileMeta{{FileName: "foobar.txt", Permissions: "rw"}},
+			Dirs: []files.DirectoryMeta{{DirName: "foo", Permissions: "rw"}},
+			Files: []any{
+				map[string]any{
+					"filename":    "foobar.txt",
+					"permissions": "rw",
+					"size":        float64(0),
+				},
+			},
 			RootInfo: files.RootInfo{Name: "config", Permissions: "rw"},
 		},
 			cmpopts.IgnoreFields(executors.ServerFilesGetDirectoryResult{}, "DiskUsage"),
 			cmpopts.IgnoreFields(files.DirectoryMeta{}, "Modified", "Size"),
-			cmpopts.IgnoreFields(files.FileMeta{}, "Modified", "Size"),
+			cmpopts.IgnoreMapEntries(func(k string, _ any) bool { return k == "modified" }),
 		)
 	})
 

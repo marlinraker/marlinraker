@@ -54,7 +54,7 @@ var (
 	FileRoots []FileRoot
 )
 
-func CreateFileRoots() error {
+func Init() error {
 
 	FileRoots = []FileRoot{
 		{
@@ -80,7 +80,8 @@ func CreateFileRoots() error {
 			return err
 		}
 	}
-	return nil
+
+	return RemoveUnusedMetadata()
 }
 
 func GetRegisteredDirectories() []string {
@@ -153,6 +154,18 @@ func Move(source string, dest string) (MoveAction, error) {
 	stat, err := Fs.Stat(destDiskPath)
 	if err != nil {
 		return action, err
+	}
+
+	if sourceRoot.Name == "gcodes" && destRoot.Name == "gcodes" {
+		if stat.IsDir() {
+			if err := DirectoryRenamed(destRelPath); err != nil {
+				return action, err
+			}
+		} else if HasMetadata(sourceRelPath) {
+			if err := MoveMetadata(sourceRelPath, destRelPath); err != nil {
+				return action, err
+			}
+		}
 	}
 
 	if stat.IsDir() {

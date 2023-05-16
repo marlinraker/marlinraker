@@ -14,5 +14,7 @@ func ServerFilesGetDirectory(_ *connections.Connection, _ *http.Request, params 
 		return nil, err
 	}
 
-	return files.GetDirInfo(path)
+	extended, _ := params.GetBool("extended")
+
+	return files.GetDirInfo(path, extended)
 }

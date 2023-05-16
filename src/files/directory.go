@@ -29,7 +29,7 @@ type DirectoryMeta struct {
 
 type DirectoryInfo struct {
 	Dirs      []DirectoryMeta `json:"dirs"`
-	Files     []FileMeta      `json:"files"`
+	Files     []any           `json:"files"`
 	DiskUsage DiskUsage       `json:"disk_usage"`
 	RootInfo  RootInfo        `json:"root_info"`
 }
@@ -39,7 +39,7 @@ type DirectoryAction struct {
 	Action string     `json:"action"`
 }
 
-func GetDirInfo(path string) (DirectoryInfo, error) {
+func GetDirInfo(path string, extended bool) (DirectoryInfo, error) {
 
 	parts := strings.Split(path, "/")
 	rootName := parts[0]
@@ -56,7 +56,7 @@ func GetDirInfo(path string) (DirectoryInfo, error) {
 		return DirectoryInfo{}, err
 	}
 
-	dirs, files := make([]DirectoryMeta, 0), make([]FileMeta, 0)
+	dirs, files := make([]DirectoryMeta, 0), make([]any, 0)
 	for _, file := range dirContent {
 		if file.IsDir() {
 			dirs = append(dirs, DirectoryMeta{
@@ -65,13 +65,32 @@ func GetDirInfo(path string) (DirectoryInfo, error) {
 				Permissions: root.Permissions,
 				DirName:     file.Name(),
 			})
+
 		} else {
-			files = append(files, FileMeta{
+			ext := filepath.Ext(file.Name())
+			if root.Name == "gcodes" && (ext == ".meta" || ext == ".png") {
+				continue
+			}
+
+			var metadata *Metadata
+			if extended && root.Name == "gcodes" {
+				relPath, err := filepath.Rel("gcodes/", filepath.Join(path, file.Name()))
+				if err != nil {
+					return DirectoryInfo{}, err
+				}
+				if metadata, _ = LoadOrScanMetadata(relPath); metadata != nil {
+					files = append(files, ExtendedFileMeta{metadata, root.Permissions})
+					continue
+				}
+			}
+
+			fileMeta := FileMeta{
 				Modified:    float64(file.ModTime().UnixMilli()) / 1000.0,
 				Size:        file.Size(),
 				Permissions: root.Permissions,
 				FileName:    file.Name(),
-			})
+			}
+			files = append(files, fileMeta)
 		}
 	}
 

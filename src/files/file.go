@@ -20,6 +20,11 @@ type FileMeta struct {
 	FileName    string  `json:"filename"`
 }
 
+type ExtendedFileMeta struct {
+	*Metadata
+	Permissions string `json:"permissions"`
+}
+
 type FileUploadAction struct {
 	Item   ActionItem `json:"item"`
 	Action string     `json:"action"`
@@ -113,7 +118,7 @@ func Upload(rootName string, path string, checksum string, header *multipart.Fil
 	return action, err
 }
 
-func DeleteFile(rootName string, path string) (FileDeleteAction, error) {
+func DeleteFile(rootName string, fileName string) (FileDeleteAction, error) {
 
 	root, err := getRootByName(rootName)
 	if err != nil {
@@ -124,7 +129,7 @@ func DeleteFile(rootName string, path string) (FileDeleteAction, error) {
 		return FileDeleteAction{}, errors.New("no write permissions")
 	}
 
-	diskPath := filepath.Join(DataDir, rootName, path)
+	diskPath := filepath.Join(DataDir, rootName, fileName)
 	stat, err := Fs.Stat(diskPath)
 	if err != nil {
 		return FileDeleteAction{}, err
@@ -136,9 +141,15 @@ func DeleteFile(rootName string, path string) (FileDeleteAction, error) {
 		return FileDeleteAction{}, err
 	}
 
+	if HasMetadata(fileName) {
+		if err := RemoveMetadata(fileName); err != nil {
+			return FileDeleteAction{}, err
+		}
+	}
+
 	action := FileDeleteAction{
 		Item: ActionItem{
-			Path:        path,
+			Path:        fileName,
 			Root:        rootName,
 			Size:        0,
 			Modified:    0,
