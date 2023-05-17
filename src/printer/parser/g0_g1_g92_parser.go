@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	coordRegex = regexp.MustCompile(` ([XYZEF])([0-9.]+)`)
+	coordRegex = regexp.MustCompile(` ([XYZEF])([+-]?[0-9.]+)`)
 )
 
 func ParseG0G1G92(request string) (map[string]float32, error) {
