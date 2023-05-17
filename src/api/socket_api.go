@@ -98,5 +98,5 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 
 	connections.UnregisterConnection(connection)
 	printer_objects.Unsubscribe(connection)
-	return socket.Close()
+	return nil
 }

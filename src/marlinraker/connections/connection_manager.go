@@ -3,7 +3,9 @@ package connections
 import (
 	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
+	"marlinraker/src/util"
 	"sync"
+	"sync/atomic"
 )
 
 type Connection struct {
@@ -30,34 +32,42 @@ func (connection *Connection) WriteJson(v any) error {
 }
 
 var (
-	connections      = make([]*Connection, 0)
-	connectionsMutex = &sync.RWMutex{}
-	nextWebsocketId  = 0
+	connections     = util.NewThreadSafe(make([]Connection, 0))
+	nextWebsocketId atomic.Int32
 )
 
-func GetConnections() []*Connection {
-	connectionsMutex.RLock()
-	defer connectionsMutex.RUnlock()
-	return connections
+func GetConnections() []Connection {
+	return connections.Load()
 }
 
 func RegisterConnection(socket *websocket.Conn) *Connection {
-	connectionsMutex.Lock()
-	defer connectionsMutex.Unlock()
-
-	id := nextWebsocketId
-	nextWebsocketId++
-	connection := &Connection{
+	id := nextWebsocketId.Add(1)
+	connection := Connection{
 		socket: socket,
 		mutex:  &sync.Mutex{},
-		Id:     id,
+		Id:     int(id),
 	}
-	connections = append(connections, connection)
-	return connection
+	connections.Do(func(connections []Connection) []Connection {
+		return append(connections, connection)
+	})
+	return &connection
 }
 
 func UnregisterConnection(connection *Connection) {
-	connectionsMutex.Lock()
-	defer connectionsMutex.Unlock()
-	connections = lo.Filter(connections, func(_connection *Connection, _ int) bool { return _connection != connection })
+	connections.Do(func(connections []Connection) []Connection {
+		return lo.Filter(connections, func(_connection Connection, _ int) bool {
+			return _connection.Id != connection.Id
+		})
+	})
+}
+
+func TerminateAllConnections() {
+	connections.Do(func(connections []Connection) []Connection {
+		for _, connection := range connections {
+			if err := connection.socket.Close(); err != nil {
+				util.LogError(err)
+			}
+		}
+		return make([]Connection, 0)
+	})
 }

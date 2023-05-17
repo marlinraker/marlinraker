@@ -17,14 +17,14 @@ type PrinterObjectsSubscribeResult struct {
 	Status    map[string]printer_objects.QueryResult `json:"status"`
 }
 
-func PrinterObjectsSubscribeHttp(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
+func PrinterObjectsSubscribeHttp(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 
 	connectionId, err := params.RequireInt64("connection_id")
 	if err != nil {
 		return nil, err
 	}
 
-	connection, found := lo.Find(connections.GetConnections(), func(connection *connections.Connection) bool {
+	connection, found := lo.Find(connections.GetConnections(), func(connection connections.Connection) bool {
 		return connection.Id == int(connectionId)
 	})
 
@@ -45,7 +45,7 @@ func PrinterObjectsSubscribeHttp(connection *connections.Connection, _ *http.Req
 		}
 	}
 
-	return subscribe(connection, subscriptions)
+	return subscribe(&connection, subscriptions)
 }
 
 func PrinterObjectsSubscribeSocket(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
