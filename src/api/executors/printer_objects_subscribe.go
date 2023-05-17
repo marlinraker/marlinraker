@@ -86,10 +86,7 @@ func subscribe(connection *connections.Connection, subscriptions map[string][]st
 
 	for name, attributes := range subscriptions {
 		printer_objects.Subscribe(connection, name, attributes)
-		result, err := printer_objects.Query(name)
-		if err != nil {
-			return nil, err
-		}
+		result := printer_objects.Query(name)
 		if attributes != nil {
 			filteredResult := make(printer_objects.QueryResult)
 			for _, attribute := range attributes {

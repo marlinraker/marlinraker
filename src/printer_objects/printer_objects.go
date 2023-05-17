@@ -1,7 +1,6 @@
 package printer_objects
 
 import (
-	"errors"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/system_info/procfs"
@@ -32,15 +31,15 @@ func GetObjects() map[string]PrinterObject {
 	return objects
 }
 
-func Query(name string) (QueryResult, error) {
+func Query(name string) QueryResult {
 	objectsMutex.RLock()
 	defer objectsMutex.RUnlock()
 
 	object, exists := objects[name]
 	if !exists {
-		return nil, errors.New("object with name \"" + name + "\" does not exist")
+		return QueryResult{}
 	}
-	return object.Query(), nil
+	return object.Query()
 }
 
 func EmitObject(name string) error {
@@ -48,10 +47,7 @@ func EmitObject(name string) error {
 	subscriptionsMutex.RLock()
 	defer subscriptionsMutex.RUnlock()
 
-	result, err := Query(name)
-	if err != nil {
-		return err
-	}
+	result := Query(name)
 
 	eventTime, err := procfs.GetUptime()
 	if err != nil {

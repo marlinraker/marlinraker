@@ -83,10 +83,7 @@ func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, param
 }
 
 func query(name string, attributes []string) (printer_objects.QueryResult, error) {
-	result, err := printer_objects.Query(name)
-	if err != nil {
-		return nil, err
-	}
+	result := printer_objects.Query(name)
 	if len(attributes) > 0 {
 		filteredResult := make(printer_objects.QueryResult)
 		for _, attribute := range attributes {
