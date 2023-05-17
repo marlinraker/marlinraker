@@ -11,6 +11,7 @@ import (
 	"marlinraker/src/printer/macros"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/printer/print_manager"
+	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
 	"marlinraker/src/util"
 	"strconv"
@@ -76,6 +77,8 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	printer_objects.RegisterObject("toolhead", toolheadObject{printer})
 
 	printer.connected = true
 	return printer, nil
@@ -175,6 +178,7 @@ func (printer *Printer) cleanup() {
 	}
 	printer.PrintManager.Cleanup(printer.context)
 	printer.MacroManager.Cleanup()
+	printer_objects.UnregisterObject("toolhead")
 }
 
 func (printer *Printer) setup() error {

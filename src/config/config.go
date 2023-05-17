@@ -52,7 +52,8 @@ type Gcode struct {
 
 type Printer struct {
 	BedMesh     bool      `toml:"bed_mesh"`
-	PrintVolume [3]int    `toml:"print_volume"`
+	AxisMinimum [3]int    `toml:"axis_minimum"`
+	AxisMaximum [3]int    `toml:"axis_maximum"`
 	Extruder    Extruder  `toml:"extruder"`
 	HeaterBed   HeaterBed `toml:"heater_bed"`
 	Gcode       Gcode     `toml:"gcode"`
@@ -161,7 +162,8 @@ func DefaultConfig() *Config {
 		},
 		Printer: Printer{
 			BedMesh:     false,
-			PrintVolume: [3]int{220, 220, 240},
+			AxisMinimum: [3]int{0, 0, 0},
+			AxisMaximum: [3]int{220, 220, 240},
 			Extruder: Extruder{
 				Heater: Heater{
 					MinTemp: 0,

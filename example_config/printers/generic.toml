@@ -2,7 +2,8 @@
 
 [printer]
 bed_mesh = false
-print_volume = [220, 220, 240]
+axis_minimum = [0, 0, 0]
+axis_maximum = [220, 220, 240]
 
 [printer.extruder]
 min_temp = 0

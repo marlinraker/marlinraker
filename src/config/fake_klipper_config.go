@@ -34,8 +34,8 @@ func GenerateFakeKlipperConfig(config *Config) (map[string]any, map[string]any) 
 
 	if config.Printer.BedMesh {
 		settings["bed_mesh"] = map[string]any{
-			"mesh_min": []int{0, 0},
-			"mesh_max": config.Printer.PrintVolume[:2],
+			"mesh_min": config.Printer.AxisMinimum[:2],
+			"mesh_max": config.Printer.AxisMaximum[:2],
 		}
 	}
 

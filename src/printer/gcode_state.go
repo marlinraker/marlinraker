@@ -2,6 +2,7 @@ package printer
 
 import (
 	"marlinraker/src/printer/parser"
+	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
 	"math"
 	"strconv"
@@ -15,6 +16,7 @@ type GcodeState struct {
 	SpeedFactor          int32
 	ExtrudeFactor        int32
 	Feedrate             float32
+	HomedAxes            [3]bool
 }
 
 func (state *GcodeState) update(line string) error {
@@ -45,6 +47,28 @@ func (state *GcodeState) update(line string) error {
 		}
 		if value, exists := values["F"]; exists && !isG92 {
 			state.Feedrate = value
+		}
+		if err := printer_objects.EmitObject("toolhead"); err != nil {
+			return err
+		}
+
+	case parser.G28.MatchString(line):
+		homedAxes := parser.ParseG28(line)
+		for i := 0; i < 3; i++ {
+			if homedAxes[i] {
+				state.HomedAxes[i] = true
+			}
+		}
+		if err := printer_objects.EmitObject("toolhead"); err != nil {
+			return err
+		}
+
+	case parser.M18_M84_M410.MatchString(line):
+		for i := 0; i < 3; i++ {
+			state.HomedAxes[i] = false
+		}
+		if err := printer_objects.EmitObject("toolhead"); err != nil {
+			return err
 		}
 
 	case parser.G90.MatchString(line):

@@ -32,7 +32,8 @@ func TestLoadConfig(t *testing.T) {
 		},
 		Printer: Printer{
 			BedMesh:     false,
-			PrintVolume: [3]int{220, 220, 240},
+			AxisMinimum: [3]int{0, 0, 0},
+			AxisMaximum: [3]int{220, 220, 240},
 			Extruder: Extruder{
 				Heater: Heater{
 					MinTemp: 0,
