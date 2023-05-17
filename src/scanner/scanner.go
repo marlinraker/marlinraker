@@ -52,6 +52,7 @@ func tryPort(path string, baudRate int, connectionTimeout int) bool {
 
 	port, err := serial.Open(path, &serial.Mode{BaudRate: baudRate})
 	if err != nil {
+		log.Error(err)
 		return false
 	}
 
@@ -63,8 +64,10 @@ func tryPort(path string, baudRate int, connectionTimeout int) bool {
 	}(port)
 
 	if _, err = port.Write([]byte("M110 N0\n")); err != nil {
+		log.Error(err)
 		return false
 	}
+	log.WithField("port", path).WithField("baudRate", baudRate).Debugln("write: M110 N0")
 
 	scanner := bufio.NewScanner(port)
 	successCh1, successCh2 := make(chan bool), make(chan bool)
@@ -82,7 +85,7 @@ func tryPort(path string, baudRate int, connectionTimeout int) bool {
 			if line != "" {
 				log.WithField("port", path).WithField("baudRate", baudRate).Debugln("recv: " + line)
 			}
-			if line == "ok" || line == "start" {
+			if line == "ok" {
 				successCh2 <- true
 				return
 			}
