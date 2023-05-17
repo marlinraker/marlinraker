@@ -102,7 +102,8 @@ func GetDirInfo(path string, extended bool) (DirectoryInfo, error) {
 	total := uint64(stat.Bsize) * stat.Blocks
 	free := uint64(stat.Bsize) * stat.Bfree
 	used := total - free
-	diskUsage := DiskUsage{total, used, free}
+	avail := uint64(stat.Bsize) * stat.Bavail
+	diskUsage := DiskUsage{total, used, avail}
 
 	return DirectoryInfo{
 		Dirs:      dirs,
