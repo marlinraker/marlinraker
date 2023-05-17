@@ -93,6 +93,11 @@ func (printer *Printer) Disconnect() error {
 	return nil
 }
 
+func (printer *Printer) EmergencyStop() error {
+	<-printer.context.QueueGcode("M112", true)
+	return printer.Disconnect()
+}
+
 func (printer *Printer) tryToConnect() error {
 	maxAttempts := printer.config.Serial.MaxConnectionAttempts
 	for i := 0; i < maxAttempts; i++ {
@@ -258,9 +263,11 @@ func (printer *Printer) handleResponseLine(line string) bool {
 }
 
 func (printer *Printer) checkEmergencyCommand(gcode string) bool {
-	if printer.hasEmergencyParser && parser.IsEmergencyCommand(gcode, printer.IsPrusa) {
+	if printer.hasEmergencyParser && parser.IsEmergencyCommand(gcode) {
 		log.Debugln("emergency: " + gcode)
-		_, _ = printer.port.Write([]byte(gcode + "\n"))
+		if _, err := printer.port.Write([]byte(gcode + "\n")); err != nil {
+			util.LogError(err)
+		}
 		printer.handleRequestLine(gcode)
 		return true
 	}

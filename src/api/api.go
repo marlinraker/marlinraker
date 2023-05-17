@@ -30,6 +30,7 @@ var socketExecutors = map[string]Executor{
 	"machine.reboot":                executors.MachineReboot,
 	"machine.shutdown":              executors.MachineShutdown,
 	"machine.system_info":           executors.MachineSystemInfo,
+	"printer.emergency_stop":        executors.PrinterEmergencyStop,
 	"printer.firmware_restart":      executors.PrinterFirmwareRestart,
 	"printer.gcode.help":            executors.PrinterGcodeHelp,
 	"printer.gcode.script":          executors.PrinterGcodeScript,
@@ -90,6 +91,7 @@ var httpExecutors = map[string]map[string]Executor{
 	"POST": {
 		"/machine/reboot":            executors.MachineReboot,
 		"/machine/shutdown":          executors.MachineShutdown,
+		"/printer/emergency_stop":    executors.PrinterEmergencyStop,
 		"/printer/firmware_restart":  executors.PrinterFirmwareRestart,
 		"/printer/gcode/script":      executors.PrinterGcodeScript,
 		"/printer/objects/subscribe": executors.PrinterObjectsSubscribeHttp,

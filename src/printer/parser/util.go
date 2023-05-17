@@ -5,15 +5,10 @@ import (
 	"strings"
 )
 
-var emergencyPrusaRegex = regexp.MustCompile(`^M112(?:\s|$)`)
 var emergencyRegex = regexp.MustCompile(`^M(?:112|108|410|876)(?:\s|$)`)
 
-func IsEmergencyCommand(gcode string, isPrusa bool) bool {
-	if isPrusa {
-		return emergencyPrusaRegex.MatchString(gcode)
-	} else {
-		return emergencyRegex.MatchString(gcode)
-	}
+func IsEmergencyCommand(gcode string) bool {
+	return emergencyRegex.MatchString(gcode)
 }
 
 func CleanGcode(gcode string) string {
