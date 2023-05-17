@@ -97,17 +97,13 @@ func writeExecutorResponse(writer http.ResponseWriter, method string, url string
 }
 
 func handleFileDownload(writer http.ResponseWriter, request *http.Request) {
-	path := strings.TrimPrefix(request.URL.Path, "/server/files/")
-	root := strings.Split(path, "/")[0]
-	file := strings.TrimPrefix(filepath.Clean(path[len(root):]), "/")
-	diskPath := filepath.Join(files.DataDir, root, file)
+	path := util.SanitizePath(strings.TrimPrefix(request.URL.Path, "/server/files/"))
+	diskPath := filepath.Join(files.DataDir, util.SanitizePath(path))
 	http.ServeFile(writer, request, diskPath)
 }
 
 func handleFileDelete(writer http.ResponseWriter, request *http.Request) error {
 	path := strings.TrimPrefix(request.URL.Path, "/server/files/")
-	root := strings.Split(path, "/")[0]
-	file := strings.TrimPrefix(filepath.Clean(path[len(root):]), "/")
-	result, err := files.DeleteFile(root, file)
+	result, err := files.DeleteFile(util.SanitizePath(path))
 	return writeExecutorResponse(writer, request.Method, request.URL.Path, result, err)
 }

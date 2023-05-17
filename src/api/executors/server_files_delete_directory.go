@@ -10,7 +10,7 @@ type ServerFilesDeleteDirectoryResult files.DirectoryAction
 
 func ServerFilesDeleteDirectory(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 
-	path, err := params.RequireString("path")
+	path, err := params.RequirePath("path")
 	if err != nil {
 		return nil, err
 	}

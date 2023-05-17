@@ -118,7 +118,14 @@ func Upload(rootName string, path string, checksum string, header *multipart.Fil
 	return action, err
 }
 
-func DeleteFile(rootName string, fileName string) (FileDeleteAction, error) {
+func DeleteFile(path string) (FileDeleteAction, error) {
+
+	var rootName, fileName string
+	if idx := strings.IndexByte(path, '/'); idx == -1 {
+		return FileDeleteAction{}, errors.New("invalid filepath")
+	} else {
+		rootName, fileName = path[:idx], path[idx+1:]
+	}
 
 	root, err := getRootByName(rootName)
 	if err != nil {

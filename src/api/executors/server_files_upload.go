@@ -31,7 +31,7 @@ func ServerFilesUpload(_ *connections.Connection, request *http.Request, _ Param
 
 	path := ""
 	if values := form.Value["path"]; len(values) > 0 {
-		path = values[0]
+		path = util.SanitizePath(values[0])
 	}
 
 	checksum := ""

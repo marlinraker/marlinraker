@@ -9,7 +9,7 @@ import (
 type ServerFilesGetDirectoryResult files.DirectoryInfo
 
 func ServerFilesGetDirectory(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
-	path, err := params.RequireString("path")
+	path, err := params.RequirePath("path")
 	if err != nil {
 		return nil, err
 	}

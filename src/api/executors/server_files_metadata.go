@@ -9,7 +9,7 @@ import (
 type ServerFilesMetadataResult *files.Metadata
 
 func ServerFilesMetadata(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
-	fileName, err := params.RequireString("filename")
+	fileName, err := params.RequirePath("filename")
 	if err != nil {
 		return nil, err
 	}

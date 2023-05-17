@@ -29,6 +29,14 @@ func (params Params) RequireString(name string) (string, error) {
 	return value, nil
 }
 
+func (params Params) RequirePath(name string) (string, error) {
+	value, err := params.RequireString(name)
+	if err != nil {
+		return "", err
+	}
+	return util.SanitizePath(value), err
+}
+
 func (params Params) GetInt64(name string) (int64, bool) {
 	value, exists := params[name]
 	if !exists {

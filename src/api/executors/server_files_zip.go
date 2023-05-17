@@ -10,7 +10,7 @@ type ServerFilesZipResult files.ZipAction
 
 func ServerFilesZip(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 
-	dest, _ := params.GetString("dest")
+	dest, _ := params.RequirePath("dest")
 
 	items, err := params.RequireStringSlice("items")
 	if err != nil {
