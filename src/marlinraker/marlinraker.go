@@ -115,6 +115,10 @@ func Connect() {
 	SetState(Ready, "Printer is ready")
 	<-Printer.CloseCh
 	temp_store.Reset()
+	if Printer.Error != nil {
+		SetState(Error, Printer.Error.Error())
+	} else {
+		SetState(Shutdown, "Disconnected from printer")
+	}
 	Printer = nil
-	SetState(Shutdown, "disconnected from printer")
 }

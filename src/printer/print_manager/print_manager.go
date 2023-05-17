@@ -29,6 +29,7 @@ func NewPrintManager(printer shared.Printer) *PrintManager {
 		printer: printer,
 		state:   util.NewThreadSafe("standby"),
 		ticker:  time.NewTicker(time.Second),
+		closeCh: make(chan struct{}),
 	}
 	printer_objects.RegisterObject("print_stats", printStatsObject{manager})
 	printer_objects.RegisterObject("virtual_sdcard", virtualSdcardObject{manager})

@@ -24,22 +24,23 @@ type watcher interface {
 }
 
 type Printer struct {
+	Capabilities       map[string]bool
+	IsPrusa            bool
+	CloseCh            chan struct{}
+	PrintManager       *print_manager.PrintManager
+	MacroManager       *macros.MacroManager
+	GcodeState         *GcodeState
+	Error              error
 	config             *config.Config
 	context            *executorContext
 	path               string
 	port               serial.Port
 	info               parser.PrinterInfo
-	Capabilities       map[string]bool
-	IsPrusa            bool
 	hasEmergencyParser bool
 	limits             parser.PrinterLimits
 	watchers           util.ThreadSafe[[]watcher]
-	CloseCh            chan struct{}
 	connected          bool
 	heaters            heatersObject
-	PrintManager       *print_manager.PrintManager
-	MacroManager       *macros.MacroManager
-	GcodeState         *GcodeState
 	savedGcodeStates   map[string]GcodeState
 }
 
@@ -93,9 +94,8 @@ func (printer *Printer) Disconnect() error {
 	return nil
 }
 
-func (printer *Printer) EmergencyStop() error {
+func (printer *Printer) EmergencyStop() {
 	<-printer.context.QueueGcode("M112", true)
-	return printer.Disconnect()
 }
 
 func (printer *Printer) tryToConnect() error {
@@ -157,6 +157,13 @@ func (printer *Printer) readPort() {
 		line := scanner.Text()
 		log.WithField("port", printer.path).Debugln("recv: " + line)
 		printer.readLine(line)
+	}
+	if err := scanner.Err(); err != nil {
+		if err, isPortError := err.(*serial.PortError); isPortError && err.Code() == serial.PortClosed {
+			log.Println("Port " + printer.path + " has been closed")
+		} else {
+			util.LogError(err)
+		}
 	}
 	printer.cleanup()
 	close(printer.CloseCh)
@@ -231,8 +238,17 @@ func (printer *Printer) setup() error {
 }
 
 func (printer *Printer) handleRequestLine(line string) {
-	if err := printer.GcodeState.update(line); err != nil {
-		util.LogError(err)
+	switch {
+	case parser.M112.MatchString(line):
+		printer.Error = errors.New("emergency stop")
+		if err := printer.Disconnect(); err != nil {
+			util.LogError(err)
+		}
+
+	default:
+		if err := printer.GcodeState.update(line); err != nil {
+			util.LogError(err)
+		}
 	}
 }
 
@@ -262,7 +278,7 @@ func (printer *Printer) handleResponseLine(line string) bool {
 	return false
 }
 
-func (printer *Printer) checkEmergencyCommand(gcode string) bool {
+func (printer *Printer) executeEmergencyCommand(gcode string) bool {
 	if printer.hasEmergencyParser && parser.IsEmergencyCommand(gcode) {
 		log.Debugln("emergency: " + gcode)
 		if _, err := printer.port.Write([]byte(gcode + "\n")); err != nil {

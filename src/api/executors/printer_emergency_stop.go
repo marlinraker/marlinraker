@@ -9,9 +9,6 @@ import (
 type PrinterEmergencyStopResult string
 
 func PrinterEmergencyStop(*connections.Connection, *http.Request, Params) (any, error) {
-	err := marlinraker.Printer.EmergencyStop()
-	if err != nil {
-		return nil, err
-	}
+	marlinraker.Printer.EmergencyStop()
 	return "ok", nil
 }

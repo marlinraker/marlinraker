@@ -6,7 +6,7 @@ type Printer interface {
 	SaveGcodeState(name string)
 	RestoreGcodeState(context ExecutorContext, name string) error
 	MainExecutorContext() ExecutorContext
-	EmergencyStop() error
+	EmergencyStop()
 }
 
 type PrintManager interface {

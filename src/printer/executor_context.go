@@ -138,11 +138,12 @@ func (context *executorContext) QueueGcode(gcode string, silent bool) chan strin
 		return responseCh
 	}
 
-	if context.printer.checkEmergencyCommand(gcode) {
-		return nil
+	ch := make(chan string)
+	if context.printer.executeEmergencyCommand(gcode) {
+		close(ch)
+		return ch
 	}
 
-	ch := make(chan string)
 	cmd := command{gcode: gcode, ch: ch}
 	context.pending.Add(1)
 	context.commandCh <- cmd
