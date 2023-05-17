@@ -2,11 +2,14 @@ package config
 
 import (
 	"fmt"
+	"github.com/samber/lo"
+	"strconv"
 	"strings"
 )
 
-func GenerateFakeKlipperConfig(config *Config) map[string]any {
-	fakeConfig := map[string]any{
+func GenerateFakeKlipperConfig(config *Config) (map[string]any, map[string]any) {
+
+	settings := map[string]any{
 		"extruder": map[string]any{
 			"min_temp":          config.Printer.Extruder.MinTemp,
 			"max_temp":          config.Printer.Extruder.MaxTemp,
@@ -30,11 +33,13 @@ func GenerateFakeKlipperConfig(config *Config) map[string]any {
 	}
 
 	if config.Printer.BedMesh {
-		fakeConfig["bed_mesh"] = map[string]any{
-			"mesh_min": "0, 0",
-			"mesh_max": fmt.Sprintf("%d, %d", config.Printer.PrintVolume[0], config.Printer.PrintVolume[1]),
+		settings["bed_mesh"] = map[string]any{
+			"mesh_min": []int{0, 0},
+			"mesh_max": config.Printer.PrintVolume[:2],
 		}
 	}
+
+	configuration := stringifySettings(settings)
 
 	for name, macro := range config.Macros {
 		macroJson := map[string]any{
@@ -46,8 +51,26 @@ func GenerateFakeKlipperConfig(config *Config) map[string]any {
 		for name, value := range macro.Variables {
 			macroJson["variable_"+name] = value
 		}
-		fakeConfig["gcode_macro "+strings.ToUpper(name)] = macroJson
+		settings["gcode_macro "+strings.ToLower(name)] = macroJson
+		configuration["gcode_macro "+strings.ToUpper(name)] = macroJson
 	}
 
-	return fakeConfig
+	return settings, configuration
+}
+
+func stringifySettings(settings map[string]any) map[string]any {
+	configuration := make(map[string]any)
+	for key, value := range settings {
+		switch value := value.(type) {
+		case map[string]any:
+			configuration[key] = stringifySettings(value)
+		case []int:
+			configuration[key] = strings.Join(lo.Map(value, func(i int, _ int) string {
+				return strconv.Itoa(i)
+			}), ", ")
+		default:
+			configuration[key] = fmt.Sprintf("%v", value)
+		}
+	}
+	return configuration
 }

@@ -6,8 +6,8 @@ type configFileObject struct{}
 
 func (configfileObject configFileObject) Query() printer_objects.QueryResult {
 	return printer_objects.QueryResult{
-		"settings":                  FakeKlipperConfig,
-		"config":                    FakeKlipperConfig,
+		"settings":                  KlipperSettings,
+		"config":                    KlipperConfig,
 		"save_config_pending":       false,
 		"save_config_pending_items": []string{},
 		"warnings":                  []string{},

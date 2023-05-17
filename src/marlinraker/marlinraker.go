@@ -25,11 +25,12 @@ const (
 )
 
 var (
-	State             = Shutdown
-	StateMessage      string
-	Config            *config.Config
-	FakeKlipperConfig map[string]any
-	Printer           *printer.Printer
+	State           = Shutdown
+	StateMessage    string
+	Config          *config.Config
+	KlipperSettings map[string]any
+	KlipperConfig   map[string]any
+	Printer         *printer.Printer
 )
 
 func Init(dataDir string) {
@@ -46,7 +47,7 @@ func Init(dataDir string) {
 	if err != nil {
 		panic(err)
 	}
-	FakeKlipperConfig = config.GenerateFakeKlipperConfig(Config)
+	KlipperSettings, KlipperConfig = config.GenerateFakeKlipperConfig(Config)
 
 	if Config.Misc.ExtendedLogs {
 		log.SetLevel(log.DebugLevel)
