@@ -79,6 +79,7 @@ func GetDirInfo(path string, extended bool) (DirectoryInfo, error) {
 					return DirectoryInfo{}, err
 				}
 				if metadata, _ = LoadOrScanMetadata(relPath); metadata != nil {
+					metadata.FileName = file.Name()
 					files = append(files, ExtendedFileMeta{metadata, root.Permissions})
 					continue
 				}
