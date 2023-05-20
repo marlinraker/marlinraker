@@ -23,7 +23,7 @@ func ServerDatabaseDeleteItem(_ *connections.Connection, _ *http.Request, params
 		return nil, err
 	}
 
-	value, err := database.DeleteItem(namespace, key)
+	value, err := database.DeleteItem(namespace, key, false)
 	if err != nil {
 		return nil, err
 	}

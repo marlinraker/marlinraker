@@ -21,7 +21,7 @@ func ServerDatabaseGetItem(_ *connections.Connection, _ *http.Request, params Pa
 
 	key, _ := params.GetString("key")
 
-	value, err := database.GetItem(namespace, key)
+	value, err := database.GetItem(namespace, key, false)
 	if err != nil {
 		return nil, err
 	}

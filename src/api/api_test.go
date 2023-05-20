@@ -233,7 +233,7 @@ func TestApi(t *testing.T) {
 		"namespace": "namespace_1",
 		"key":       "key3",
 	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
-		assert.Error(t, error, "Key \"key3\" in namespace \"namespace_1\" not found")
+		assert.Error(t, error, "key \"key3\" in namespace \"namespace_1\" not found")
 	})
 
 	testAll(t, "server.database.post_item", "POST", "/server/database/item", executors.Params{
@@ -254,7 +254,7 @@ func TestApi(t *testing.T) {
 	})
 
 	// create entry to delete
-	if _, err := database.PostItem("test_namespace", "delete_me", "delete_me"); err != nil {
+	if _, err := database.PostItem("test_namespace", "delete_me", "delete_me", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -263,14 +263,14 @@ func TestApi(t *testing.T) {
 		"key":       "delete_me",
 	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseDeleteItemResult, error *Error) {
 
-		_, err := database.GetItem("test_namespace", "delete_me")
-		assert.Error(t, err, "Key \"delete_me\" in namespace \"test_namespace\" not found")
+		_, err := database.GetItem("test_namespace", "delete_me", false)
+		assert.Error(t, err, "key \"delete_me\" in namespace \"test_namespace\" not found")
 
 		namespaces := database.ListNamespaces()
 		assert.Equal(t, slices.Contains(namespaces, "delete_me"), false)
 
 		// re-create entry
-		if _, err := database.PostItem("test_namespace", "delete_me", "delete_me"); err != nil {
+		if _, err := database.PostItem("test_namespace", "delete_me", "delete_me", false); err != nil {
 			t.Fatal(err)
 		}
 

@@ -28,7 +28,7 @@ func ServerDatabasePostItem(_ *connections.Connection, _ *http.Request, params P
 		return nil, err
 	}
 
-	if _, err := database.PostItem(namespace, key, value); err != nil {
+	if _, err := database.PostItem(namespace, key, value, false); err != nil {
 		return nil, err
 	}
 
