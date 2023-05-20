@@ -92,21 +92,24 @@ func Connect() {
 
 	SetState(Startup, "Connecting to printer...")
 
+	var baudRateInt int
 	port, baudRate := Config.Serial.Port, Config.Serial.BaudRate
-	if _, isBaudRate := baudRate.(int64); port == "" || port == "auto" || !isBaudRate {
-		port, baudRate = scanner.FindSerialPort(Config)
+	if baudRate, isInt := baudRate.(int); isInt {
+		baudRateInt = baudRate
 	}
-	baudRateInt, _ := baudRate.(int64)
+	if port == "" || port == "auto" || baudRateInt <= 0 {
+		port, baudRateInt = scanner.FindSerialPort(Config)
+	}
 
 	if port == "" || baudRateInt == 0 {
 		SetState(Error, "Could not find serial port to connect to")
 		return
 	}
 
-	log.Println("Using port " + port + " @ " + strconv.Itoa(int(baudRateInt)))
+	log.Println("Using port " + port + " @ " + strconv.Itoa(baudRateInt))
 
 	var err error
-	Printer, err = printer.New(Config, port, int(baudRateInt))
+	Printer, err = printer.New(Config, port, baudRateInt)
 	if err != nil {
 		SetState(Error, "Error: "+err.Error())
 		Printer = nil

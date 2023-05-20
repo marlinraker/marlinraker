@@ -5,12 +5,48 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go.bug.st/serial"
 	"marlinraker/src/config"
+	"marlinraker/src/database"
 	"marlinraker/src/util"
 	"strconv"
 	"time"
 )
 
-func FindSerialPort(config *config.Config) (string, int64) {
+func FindSerialPort(config *config.Config) (string, int) {
+
+	lastPath, _ := database.GetItem("marlinraker", "lastPath", true)
+	lastBaudRate, _ := database.GetItem("marlinraker", "lastBaudRate", true)
+
+	path, hasPath := lastPath.(string)
+	baudRateFloat, hasBaudRate := lastBaudRate.(float64)
+	if hasPath && hasBaudRate {
+
+		baudRate := int(baudRateFloat)
+		log.Println("Trying last used port " + path + " @ " + strconv.Itoa(baudRate) + "...")
+
+		success := tryPort(path, baudRate, config.Serial.ConnectionTimeout)
+		if success {
+			log.Println("Found printer at last used port " + path + " @ " + strconv.Itoa(baudRate))
+			return path, baudRate
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+
+	path, baudRate := scan(config)
+	if path != "" && baudRate != 0 {
+		_, err := database.PostItem("marlinraker", "lastPath", path, true)
+		if err != nil {
+			util.LogError(err)
+		}
+		_, err = database.PostItem("marlinraker", "lastBaudRate", baudRate, true)
+		if err != nil {
+			util.LogError(err)
+		}
+		log.Debugln("Saved last successful port " + path + " @ " + strconv.Itoa(baudRate))
+	}
+	return path, baudRate
+}
+
+func scan(config *config.Config) (string, int) {
 
 	var err error
 	var ports []string
@@ -40,8 +76,10 @@ func FindSerialPort(config *config.Config) (string, int64) {
 			success := tryPort(path, baudRate, config.Serial.ConnectionTimeout)
 			if success {
 				log.Println("Found printer at " + path + " @ " + strconv.Itoa(baudRate))
-				return path, int64(baudRate)
+				return path, baudRate
 			}
+			// wait for serial port to recover
+			time.Sleep(time.Millisecond * 500)
 		}
 	}
 
@@ -70,33 +108,37 @@ func tryPort(path string, baudRate int, connectionTimeout int) bool {
 	log.WithField("port", path).WithField("baudRate", baudRate).Debugln("write: M110 N0")
 
 	scanner := bufio.NewScanner(port)
-	successCh1, successCh2 := make(chan bool), make(chan bool)
+	timeoutCh, connectCh := make(chan bool), make(chan bool)
 
 	go func() {
-		defer close(successCh1)
+		defer close(timeoutCh)
 		time.Sleep(time.Millisecond * time.Duration(connectionTimeout))
-		successCh1 <- false
+		timeoutCh <- false
 	}()
 
 	go func() {
-		defer close(successCh2)
+		defer close(connectCh)
 		for scanner.Scan() {
 			line := scanner.Text()
 			if line != "" {
 				log.WithField("port", path).WithField("baudRate", baudRate).Debugln("recv: " + line)
 			}
 			if line == "ok" {
-				successCh2 <- true
+				connectCh <- true
 				return
 			}
 		}
-		successCh2 <- false
+		connectCh <- false
 	}()
 
 	var success bool
 	select {
-	case success = <-successCh1:
-	case success = <-successCh2:
+	case success = <-timeoutCh:
+		log.Errorln("Timeout on " + path)
+		if err := port.Close(); err != nil {
+			util.LogError(err)
+		}
+	case success = <-connectCh:
 	}
 	return success
 }
