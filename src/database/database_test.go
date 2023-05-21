@@ -1,6 +1,7 @@
 package database
 
 import (
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/spf13/afero"
 	"gotest.tools/assert"
 	"marlinraker/src/files"
@@ -161,5 +162,6 @@ func TestListNamespaces(t *testing.T) {
 	assert.NilError(t, err)
 
 	namespaces := ListNamespaces()
-	assert.DeepEqual(t, namespaces, append(ReservedNamespaces, "test", "foo"))
+	assert.DeepEqual(t, namespaces, append(ReservedNamespaces, "test", "foo"),
+		cmpopts.SortSlices(func(a string, b string) bool { return a < b }))
 }
