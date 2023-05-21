@@ -13,22 +13,24 @@ import (
 
 func FindSerialPort(config *config.Config) (string, int) {
 
-	lastPath, _ := database.GetItem("marlinraker", "lastPath", true)
-	lastBaudRate, _ := database.GetItem("marlinraker", "lastBaudRate", true)
+	if config.Serial.Port == "auto" {
+		lastPath, _ := database.GetItem("marlinraker", "lastPath", true)
+		lastBaudRate, _ := database.GetItem("marlinraker", "lastBaudRate", true)
 
-	path, hasPath := lastPath.(string)
-	baudRateFloat, hasBaudRate := lastBaudRate.(float64)
-	if hasPath && hasBaudRate {
+		path, hasPath := lastPath.(string)
+		baudRateFloat, hasBaudRate := lastBaudRate.(float64)
+		if hasPath && hasBaudRate {
 
-		baudRate := int(baudRateFloat)
-		log.Println("Trying last used port " + path + " @ " + strconv.Itoa(baudRate) + "...")
+			baudRate := int(baudRateFloat)
+			log.Println("Trying last used port " + path + " @ " + strconv.Itoa(baudRate) + "...")
 
-		success := tryPort(path, baudRate, config.Serial.ConnectionTimeout)
-		if success {
-			log.Println("Found printer at last used port " + path + " @ " + strconv.Itoa(baudRate))
-			return path, baudRate
+			success := tryPort(path, baudRate, config.Serial.ConnectionTimeout)
+			if success {
+				log.Println("Found printer at last used port " + path + " @ " + strconv.Itoa(baudRate))
+				return path, baudRate
+			}
+			time.Sleep(time.Millisecond * 500)
 		}
-		time.Sleep(time.Millisecond * 500)
 	}
 
 	path, baudRate := scan(config)
