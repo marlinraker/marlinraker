@@ -3,7 +3,6 @@ package parser
 import "regexp"
 
 var (
-	G0_G1_G92    = regexp.MustCompile(`^G([01]|92)(\s|$)`)
 	G28          = regexp.MustCompile(`^G28(\s|$)`)
 	G90          = regexp.MustCompile(`^G90(\s|$)`)
 	G91          = regexp.MustCompile(`^G91(\s|$)`)

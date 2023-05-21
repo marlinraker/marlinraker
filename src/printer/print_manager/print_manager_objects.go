@@ -24,7 +24,7 @@ func (object printStatsObject) Query() printer_objects.QueryResult {
 		"filename":       fileName,
 		"total_duration": totalDuration,
 		"print_duration": printDuration,
-		"filament_used":  0,
+		"filament_used":  object.manager.getFilamentUsed(),
 		"state":          object.manager.state.Load(),
 		"message":        "",
 	}
@@ -38,7 +38,7 @@ func (object virtualSdcardObject) Query() printer_objects.QueryResult {
 
 	var (
 		filePath string
-		progress float32
+		progress float64
 		size     int64
 		position int64
 	)

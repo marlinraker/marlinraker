@@ -20,7 +20,7 @@ import (
 )
 
 type watcher interface {
-	handle(line string) bool
+	handle(line string)
 	stop()
 }
 
@@ -60,7 +60,7 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 		CloseCh:   make(chan struct{}),
 		connected: false,
 		GcodeState: &GcodeState{
-			Position:             [4]float32{0, 0, 0, 0},
+			Position:             [4]float64{0, 0, 0, 0},
 			IsAbsoluteCoordinate: true,
 			IsAbsoluteExtrude:    true,
 			SpeedFactor:          100,
@@ -79,6 +79,8 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 	}
 
 	printer_objects.RegisterObject("toolhead", toolheadObject{printer})
+	printer_objects.RegisterObject("motion_report", motionReportObject{printer})
+	printer_objects.RegisterObject("gcode_move", gcodeMoveObject{printer})
 
 	printer.connected = true
 	return printer, nil
@@ -179,6 +181,8 @@ func (printer *Printer) cleanup() {
 	printer.PrintManager.Cleanup(printer.context)
 	printer.MacroManager.Cleanup()
 	printer_objects.UnregisterObject("toolhead")
+	printer_objects.UnregisterObject("motion_report")
+	printer_objects.UnregisterObject("gcode_move")
 }
 
 func (printer *Printer) setup() error {
@@ -196,11 +200,9 @@ func (printer *Printer) setup() error {
 
 		printer.hasEmergencyParser = printer.IsPrusa || printer.Capabilities["EMERGENCY_PARSER"]
 
-		reportVelocity := printer.config.Misc.ReportVelocity
-
 		if printer.IsPrusa {
 			c := 1 << 0
-			if !reportVelocity {
+			if !printer.config.Printer.Gcode.ReportVelocity {
 				c |= 1 << 2
 			}
 			<-printer.context.QueueGcode("M155 S1 C"+strconv.Itoa(c), true)
@@ -217,9 +219,9 @@ func (printer *Printer) setup() error {
 			break
 		}
 
-		tempWatcher := newTempWatcher(printer)
+		tempWatcher, positionWatcher := newTempWatcher(printer), newPositionWatcher(printer)
 		printer.watchers.Do(func(watchers []watcher) []watcher {
-			return append(watchers, tempWatcher)
+			return append(watchers, tempWatcher, positionWatcher)
 		})
 		printer.heaters = <-tempWatcher.heatersCh
 
@@ -259,9 +261,7 @@ func (printer *Printer) handleRequestLine(line string) {
 func (printer *Printer) handleResponseLine(line string) bool {
 
 	for _, watcher := range printer.watchers.Load() {
-		if watcher.handle(line) {
-			return true
-		}
+		watcher.handle(line)
 	}
 
 	if printer.connected && strings.HasPrefix(line, "echo:") {
@@ -310,6 +310,10 @@ func (printer *Printer) GetPrintManager() shared.PrintManager {
 func (printer *Printer) Respond(message string) error {
 	gcode_store.LogNow(message, gcode_store.Response)
 	return notification.Publish(notification.New("notify_gcode_response", []any{message}))
+}
+
+func (printer *Printer) GetGcodeState() shared.GcodeState {
+	return printer.GcodeState
 }
 
 func (printer *Printer) SaveGcodeState(name string) {

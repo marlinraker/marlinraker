@@ -26,11 +26,12 @@ type printJob struct {
 	reader         *bufio.Reader
 	position       atomic.Int64
 	fileSize       int64
-	progress       util.ThreadSafe[float32]
+	progress       util.ThreadSafe[float64]
 	startTime      util.ThreadSafe[time.Time]
 	lastResumeTime util.ThreadSafe[time.Time]
 	endTime        util.ThreadSafe[time.Time]
 	printDuration  util.ThreadSafe[time.Duration]
+	ePosStart      util.ThreadSafe[float64]
 }
 
 func newPrintJob(manager *PrintManager, fileName string) *printJob {
@@ -42,11 +43,12 @@ func newPrintJob(manager *PrintManager, fileName string) *printJob {
 		pauseCh:        make(chan struct{}),
 		cancelCh:       make(chan struct{}),
 		fileSize:       0,
-		progress:       util.NewThreadSafe[float32](0),
+		progress:       util.NewThreadSafe(0.),
 		startTime:      util.NewThreadSafe(time.Time{}),
 		lastResumeTime: util.NewThreadSafe(time.Time{}),
 		endTime:        util.NewThreadSafe(time.Time{}),
 		printDuration:  util.NewThreadSafe[time.Duration](0),
+		ePosStart:      util.NewThreadSafe(0.),
 	}
 	close(job.pauseCh)
 	return job
@@ -93,7 +95,7 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 
 			read, line := int64(len(bytes)), strings.TrimRight(string(bytes), "\r\n")
 			position := job.position.Add(read)
-			job.progress.Store(float32(position) / float32(job.fileSize))
+			job.progress.Store(float64(position) / float64(job.fileSize))
 
 			if canceled, err := job.nextLine(line); err != nil || canceled {
 				if err != nil {
@@ -203,4 +205,9 @@ func (job *printJob) getPrintTime() time.Duration {
 		duration += now.Sub(job.lastResumeTime.Load())
 	}
 	return duration
+}
+
+func (job *printJob) getFilamentUsed() float64 {
+	extruded := job.manager.printer.GetGcodeState().ExtrudedFilament()
+	return extruded - job.ePosStart.Load()
 }

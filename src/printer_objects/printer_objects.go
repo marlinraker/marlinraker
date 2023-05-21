@@ -42,30 +42,42 @@ func Query(name string) QueryResult {
 	return object.Query()
 }
 
-func EmitObject(name string) error {
+func EmitObject(names ...string) error {
 
 	subscriptionsMutex.RLock()
 	defer subscriptionsMutex.RUnlock()
-
-	result := Query(name)
 
 	eventTime, err := procfs.GetUptime()
 	if err != nil {
 		return err
 	}
 
-	for connection, attributes := range subscriptions[name] {
-		diff := getDiff(connection, name, result)
-		if attributes != nil {
-			filtered := make(QueryResult)
-			for _, attribute := range attributes {
-				if value, exists := diff[attribute]; exists {
-					filtered[attribute] = value
+	pending := make(map[*connections.Connection]map[string]QueryResult)
+
+	for _, name := range names {
+
+		result := Query(name)
+		for connection, attributes := range subscriptions[name] {
+
+			diff := getDiff(connection, name, result)
+			if attributes != nil {
+				filtered := make(QueryResult)
+				for _, attribute := range attributes {
+					if value, exists := diff[attribute]; exists {
+						filtered[attribute] = value
+					}
 				}
+				diff = filtered
 			}
-			diff = filtered
+
+			if _, exists := pending[connection]; !exists {
+				pending[connection] = make(map[string]QueryResult)
+			}
+			pending[connection][name] = diff
 		}
-		status := map[string]any{name: diff}
+	}
+
+	for connection, status := range pending {
 		err := notification.Send(connection, notification.New("notify_status_update", []any{status, eventTime}))
 		if err != nil {
 			return err

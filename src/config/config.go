@@ -27,7 +27,6 @@ type Serial struct {
 type Misc struct {
 	OctoprintCompat bool     `toml:"octoprint_compat"`
 	ExtendedLogs    bool     `toml:"extended_logs"`
-	ReportVelocity  bool     `toml:"report_velocity"`
 	AllowedServices []string `toml:"allowed_services"`
 }
 
@@ -47,7 +46,8 @@ type HeaterBed struct {
 }
 
 type Gcode struct {
-	SendM73 bool `toml:"send_m73"`
+	SendM73        bool `toml:"send_m73"`
+	ReportVelocity bool `toml:"report_velocity"`
 }
 
 type Printer struct {
@@ -157,7 +157,6 @@ func DefaultConfig() *Config {
 		Misc: Misc{
 			OctoprintCompat: true,
 			ExtendedLogs:    false,
-			ReportVelocity:  false,
 			AllowedServices: []string{"marlinraker", "crowsnest", "MoonCord", "moonraker-telegram-bot", "KlipperScreen", "sonar", "webcamd"},
 		},
 		Printer: Printer{
@@ -179,7 +178,8 @@ func DefaultConfig() *Config {
 				},
 			},
 			Gcode: Gcode{
-				SendM73: true,
+				SendM73:        true,
+				ReportVelocity: true,
 			},
 		},
 		Macros: map[string]Macro{},

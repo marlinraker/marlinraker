@@ -3,10 +3,15 @@ package shared
 type Printer interface {
 	Respond(message string) error
 	GetPrintManager() PrintManager
+	GetGcodeState() GcodeState
 	SaveGcodeState(name string)
 	RestoreGcodeState(context ExecutorContext, name string) error
 	MainExecutorContext() ExecutorContext
 	EmergencyStop()
+}
+
+type GcodeState interface {
+	ExtrudedFilament() float64
 }
 
 type PrintManager interface {
@@ -16,6 +21,7 @@ type PrintManager interface {
 	Resume(context ExecutorContext) error
 	Cancel(context ExecutorContext) error
 	Reset(context ExecutorContext) error
+	GetState() string
 }
 
 type ExecutorContext interface {

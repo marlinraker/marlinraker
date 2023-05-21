@@ -138,6 +138,10 @@ func (manager *PrintManager) Reset(context shared.ExecutorContext) error {
 	return nil
 }
 
+func (manager *PrintManager) GetState() string {
+	return manager.state.Load()
+}
+
 func (manager *PrintManager) isPrinting(job *printJob, state string) bool {
 	if job == nil {
 		return false
@@ -162,10 +166,14 @@ func (manager *PrintManager) setState(state string) {
 }
 
 func (manager *PrintManager) emit() {
-	if err := printer_objects.EmitObject("print_stats"); err != nil {
+	if err := printer_objects.EmitObject("print_stats", "virtual_sdcard"); err != nil {
 		util.LogError(err)
 	}
-	if err := printer_objects.EmitObject("virtual_sdcard"); err != nil {
-		util.LogError(err)
+}
+
+func (manager *PrintManager) getFilamentUsed() float64 {
+	if job := manager.currentJob.Load(); job != nil {
+		return job.getFilamentUsed()
 	}
+	return 0
 }

@@ -11,19 +11,14 @@ import (
 
 func readContent(t *testing.T, name string) string {
 	bytes, err := afero.ReadFile(files.Fs, name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
 	return string(bytes)
 }
 
 func TestParseM115(t *testing.T) {
 	response := readContent(t, "testdata/m115")
 	info, capabilities, err := ParseM115(response)
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
 
 	assert.DeepEqual(t, info, PrinterInfo{
 		MachineType: "Prusa-mini", FirmwareName: "Prusa-Firmware-Buddy 4.4.0-BETA2+4114 (Github)",
@@ -56,10 +51,7 @@ func TestParseM115(t *testing.T) {
 func TestParseM503(t *testing.T) {
 	response := readContent(t, "testdata/m503")
 	limits, err := ParseM503(response)
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
 
 	assert.DeepEqual(t, limits, PrinterLimits{
 		MaxAccel:    [3]float32{1250.00, 1250.00, 400.00},
@@ -126,7 +118,7 @@ func TestParseM105(t *testing.T) {
 func TestParseM220M221(t *testing.T) {
 	s, err := ParseM220M221("M220 S80")
 	assert.NilError(t, err)
-	assert.Equal(t, s, int32(80))
+	assert.Equal(t, s, 80)
 
 	_, err = ParseM220M221("M220")
 	assert.Error(t, err, "missing S parameter")
@@ -135,9 +127,23 @@ func TestParseM220M221(t *testing.T) {
 func TestParseG0G1G92(t *testing.T) {
 	coords, err := ParseG0G1G92("G1 X109.73 Y119.168 E.29192")
 	assert.NilError(t, err)
-	assert.DeepEqual(t, coords, map[string]float32{
+	assert.DeepEqual(t, coords, map[string]float64{
 		"X": 109.73,
 		"Y": 119.168,
 		"E": 0.29192,
 	})
+}
+
+func TestParseM114(t *testing.T) {
+	responseLines := readContent(t, "testdata/m114")
+	expected := [][4]float64{
+		{180.4, -3., 0., 0.},
+		{0., 0., 0., 0.},
+	}
+
+	for i, line := range strings.Split(strings.TrimSpace(responseLines), "\n") {
+		actual, err := ParseM114(line)
+		assert.NilError(t, err)
+		assert.DeepEqual(t, expected[i], actual)
+	}
 }

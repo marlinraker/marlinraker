@@ -62,6 +62,7 @@ type tempWatcher struct {
 	heatersCh     chan heatersObject
 	firstRead     bool
 	ticker        *time.Ticker
+	closeCh       chan struct{}
 	heaterObjects map[string]*heaterObject
 	sensorObjects map[string]*temperatureSensorObject
 	objectsMutex  *sync.Mutex
@@ -79,6 +80,7 @@ func newTempWatcher(printer *Printer) *tempWatcher {
 		heatersCh:     make(chan heatersObject),
 		heaterObjects: make(map[string]*heaterObject),
 		sensorObjects: make(map[string]*temperatureSensorObject),
+		closeCh:       make(chan struct{}),
 		objectsMutex:  &sync.Mutex{},
 		autoReport:    printer.Capabilities["AUTOREPORT_TEMP"],
 		firstRead:     true,
@@ -95,8 +97,12 @@ func newTempWatcher(printer *Printer) *tempWatcher {
 func (watcher *tempWatcher) runTimer() {
 	watcher.ticker = time.NewTicker(time.Second)
 	for {
-		<-watcher.ticker.C
-		watcher.tick()
+		select {
+		case <-watcher.closeCh:
+			break
+		case <-watcher.ticker.C:
+			watcher.tick()
+		}
 	}
 }
 
@@ -127,6 +133,7 @@ func (watcher *tempWatcher) stop() {
 	if watcher.ticker != nil {
 		watcher.ticker.Stop()
 	}
+	close(watcher.closeCh)
 	printer_objects.UnregisterObject("heaters")
 	for name := range watcher.heaterObjects {
 		printer_objects.UnregisterObject(name)
@@ -136,14 +143,12 @@ func (watcher *tempWatcher) stop() {
 	}
 }
 
-func (watcher *tempWatcher) handle(line string) bool {
+func (watcher *tempWatcher) handle(line string) {
 	if tempResponseLineRegex.MatchString(line) {
 		watcher.objectsMutex.Lock()
 		defer watcher.objectsMutex.Unlock()
 		watcher.parseTemps(line)
-		return true
 	}
-	return false
 }
 
 func (watcher *tempWatcher) parseTemps(data string) {

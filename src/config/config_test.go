@@ -27,7 +27,6 @@ func TestLoadConfig(t *testing.T) {
 		Misc: Misc{
 			OctoprintCompat: true,
 			ExtendedLogs:    false,
-			ReportVelocity:  false,
 			AllowedServices: []string{"service1", "service2"},
 		},
 		Printer: Printer{
@@ -49,7 +48,8 @@ func TestLoadConfig(t *testing.T) {
 				},
 			},
 			Gcode: Gcode{
-				SendM73: true,
+				SendM73:        true,
+				ReportVelocity: true,
 			},
 		},
 		Macros: map[string]Macro{

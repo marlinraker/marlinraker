@@ -17,3 +17,4 @@ max_temp = 120
 
 [printer.gcode]
 send_m73 = false
+report_velocity = true
