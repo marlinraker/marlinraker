@@ -21,7 +21,11 @@ func main() {
 		return
 	}
 
-	dataDir, err := filepath.Abs("./marlinraker_files")
+	relPath := os.Getenv("MARLINRAKER_DIR")
+	if relPath == "" {
+		relPath = "./marlinraker_files"
+	}
+	dataDir, err := filepath.Abs(relPath)
 	if err != nil {
 		panic(err)
 	}
