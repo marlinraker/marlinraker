@@ -6,6 +6,8 @@ import (
 	"marlinraker/src/config"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
+	"marlinraker/src/util"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -17,6 +19,11 @@ type MacroManager struct {
 }
 
 type Params map[string]string
+
+var (
+	quotedParamRegex   = regexp.MustCompile(`(\S+)=("(?:[^"\\]|\\.)*?")`)
+	unquotedParamRegex = regexp.MustCompile(`(\S+)=(\S+)`)
+)
 
 func (params Params) RequireString(name string) (string, error) {
 	value, exists := params[name]
@@ -113,20 +120,30 @@ func (manager *MacroManager) GetMacro(command string) (Macro, string, bool) {
 
 func (manager *MacroManager) ExecuteMacro(macro Macro, context shared.ExecutorContext, gcode string) chan error {
 
-	parts := strings.Split(gcode, " ")
 	objects, params := make(Objects), make(Params)
 	for name, object := range printer_objects.GetObjects() {
 		objects[name] = object.Query()
 	}
 
+	parts := strings.Split(gcode, " ")
 	rawParams := parts[1:]
-	for _, rawParam := range rawParams {
-		if idx := strings.Index(rawParam, "="); idx != -1 {
-			name, value := rawParam[:idx], rawParam[idx+1:]
-			if name != "" && value != "" {
-				params[strings.ToLower(name)] = value
-			}
+
+	for _, match := range quotedParamRegex.FindAllStringSubmatch(gcode, -1) {
+		name, valueQuoted := strings.ToLower(match[1]), match[2]
+		value, err := strconv.Unquote(valueQuoted)
+		if err != nil {
+			util.LogError(err)
+			continue
 		}
+		params[name] = value
+	}
+
+	for _, match := range unquotedParamRegex.FindAllStringSubmatch(gcode, -1) {
+		name, value := strings.ToLower(match[1]), match[2]
+		if _, exists := params[name]; exists {
+			continue
+		}
+		params[name] = value
 	}
 
 	ch := make(chan error)

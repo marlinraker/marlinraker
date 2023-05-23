@@ -147,3 +147,8 @@ func TestParseM114(t *testing.T) {
 		assert.DeepEqual(t, expected[i], actual)
 	}
 }
+
+func TestParseAction(t *testing.T) {
+	action := ParseAction("// action:pause")
+	assert.Equal(t, action, "pause")
+}

@@ -1,4 +1,4 @@
-# Prusa i3 MK3S(+)
+# Prusa i3 MK3/MK3S/MK3S+
 
 [printer]
 bed_mesh = true
@@ -18,3 +18,59 @@ max_temp = 120
 [printer.gcode]
 send_m73 = false
 report_velocity = true
+
+[macros.sdcard_print_file]
+rename_existing = "sdcard_print_file_base"
+gcode = """
+  {{ if eq .Printer.print_stats.state "standby" "error" "complete" }}
+    {{ $fileName := .Params.filename }} ; SDCARD_PRINT_FILE FILENAME=...
+    {{ if eq $fileName "" }}
+      {{ .ActionRaiseError "File name not provided" }}
+    {{ else }}
+      {{ print "Printing " $fileName | .ActionRespondInfo }} ; print to console
+      M117 Printing {{ $fileName }} ; print to LCD
+      M73 P0 R0 ; start print job timer
+      SDCARD_PRINT_FILE_BASE {{ .RawParams | join " " }} ; start print
+    {{ end }}
+  {{ else }}
+    {{ .ActionRaiseError "Already printing" }}
+  {{ end }}
+"""
+
+[macros.pause]
+rename_exising = "pause_base"
+gcode = """
+  {{ if eq .Printer.print_stats.state "printing" }}
+    PAUSE_BASE ; pause print
+    M601 ; park toolhead and pause timer
+  {{ else }}
+    {{ .ActionRaiseError "Not printing" }}
+  {{ end }}
+"""
+
+[macros.resume]
+rename_existing = "resume_base"
+gcode = """
+  {{ if eq .Printer.print_stats.state "paused" }}
+    {{ $fileName := base .Printer.print_stats.filename }} ; get current filename from print_stats object
+    {{ print "Resuming " $fileName | .ActionRespondInfo }} ; print to console
+    M117 Printing {{ $fileName }}
+    M602 ; resume timer and move to position
+    RESUME_BASE ; resume print
+  {{ else }}
+    {{ .ActionRaiseError "Not paused" }}
+  {{ end }}
+"""
+
+[macros.cancel_print]
+rename_exising = "cancel_print_base"
+gcode = """
+  {{ if eq .Printer.print_stats.state "printing" "paused" }}
+    CANCEL_PRINT_BASE ; cancel print
+    M603 ; park toolhead and turn off heaters
+    {{ .ActionRespondInfo "Print aborted" }} ; print to console
+    M117 Print aborted ; print to LCD
+  {{ else }}
+    {{ .ActionRaiseError "Not printing" }}
+  {{ end }}
+"""

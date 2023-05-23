@@ -260,6 +260,22 @@ func (printer *Printer) handleRequestLine(line string) {
 
 func (printer *Printer) handleResponseLine(line string) bool {
 
+	if strings.HasPrefix(line, "//") {
+		action := parser.ParseAction(line)
+		switch action {
+		case "cancel":
+			log.Println("Canceling print")
+			_ = printer.context.QueueGcode("CANCEL_PRINT", true)
+		case "pause":
+			log.Println("Pausing print")
+			_ = printer.context.QueueGcode("PAUSE", true)
+		case "resume":
+			log.Println("Resuming print")
+			_ = printer.context.QueueGcode("RESUME", true)
+		}
+		return true
+	}
+
 	for _, watcher := range printer.watchers.Load() {
 		watcher.handle(line)
 	}

@@ -112,7 +112,9 @@ func (context *executorContext) QueueGcode(gcode string, silent bool) chan strin
 
 	gcode = parser.CleanGcode(gcode)
 	if gcode == "" {
-		return nil
+		ch := make(chan string)
+		close(ch)
+		return ch
 	}
 
 	if strings.Contains(gcode, "\n") {

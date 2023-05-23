@@ -5,6 +5,7 @@ import (
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/util"
 	"net/http"
+	"strconv"
 )
 
 func PrinterPrintStart(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
@@ -17,12 +18,6 @@ func PrinterPrintStart(_ *connections.Connection, _ *http.Request, params Params
 		return nil, err
 	}
 
-	if err := marlinraker.Printer.PrintManager.SelectFile(fileName); err != nil {
-		return nil, err
-	}
-
-	if err := marlinraker.Printer.PrintManager.Start(marlinraker.Printer.MainExecutorContext()); err != nil {
-		return nil, err
-	}
+	<-marlinraker.Printer.MainExecutorContext().QueueGcode("SDCARD_PRINT_FILE FILENAME="+strconv.Quote(fileName), true)
 	return "ok", nil
 }

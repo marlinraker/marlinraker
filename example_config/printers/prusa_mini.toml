@@ -18,3 +18,34 @@ max_temp = 100
 [printer.gcode]
 send_m73 = false
 report_velocity = false
+
+[macros.pause]
+rename_exising = "pause_base"
+gcode = """
+  PAUSE_BASE
+  SAVE_GCODE_STATE NAME=print_pause
+  _PARK_TOOLHEAD
+"""
+
+[macros.resume]
+rename_existing = "resume_base"
+gcode = """
+  RESTORE_GCODE_STATE NAME=print_pause
+  RESUME_BASE
+"""
+
+[macros.cancel_print]
+rename_exising = "cancel_print_base"
+gcode = """
+  CANCEL_PRINT_BASE
+  _PARK_TOOLHEAD
+"""
+
+[macros._park_toolhead]
+gcode = """
+  G91
+  G1 Z5 E-1 F900
+  G90
+  G1 X0 Y0 F2500
+  TURN_OFF_HEATERS
+"""
