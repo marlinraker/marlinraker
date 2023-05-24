@@ -31,6 +31,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		panic(err)
+	}
 
 	pidFilePath := filepath.Join(dataDir, "marlinraker.pid")
 	checkAlreadyRunning(pidFilePath)

@@ -12,7 +12,7 @@ type MachineShutdownResult string
 func MachineShutdown(*connections.Connection, *http.Request, Params) (any, error) {
 	go func() {
 		connections.TerminateAllConnections()
-		if err := exec.Command("systemctl", "poweroff").Err; err != nil {
+		if err := exec.Command("systemctl", "poweroff").Run(); err != nil {
 			util.LogError(err)
 		}
 	}()
