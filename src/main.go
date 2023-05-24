@@ -12,6 +12,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"syscall"
 )
 
 func main() {
@@ -30,16 +32,31 @@ func main() {
 		panic(err)
 	}
 
+	pidFilePath := filepath.Join(dataDir, "marlinraker.pid")
+	checkAlreadyRunning(pidFilePath)
+	if err := os.WriteFile(pidFilePath, []byte(strconv.Itoa(os.Getpid())), 0755); err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := os.Remove(pidFilePath); err != nil {
+			panic(err)
+		}
+	}()
+
 	files.DataDir = dataDir
 	if err := files.Init(); err != nil {
 		panic(err)
 	}
 
-	logFile, err := logger.SetupLogger(dataDir)
-	if err != nil {
+	if err := logger.SetupLogger(); err != nil {
 		panic(err)
 	}
-	defer logger.CloseLogger(logFile)
+	defer func() {
+		if err := logger.CloseLogger(); err != nil {
+			panic(err)
+		}
+	}()
+	go logger.HandleRotate()
 
 	if err := database.Init(); err != nil {
 		panic(err)
@@ -54,4 +71,25 @@ func main() {
 
 	<-ch
 	log.Println("Received interrupt, shutting down")
+}
+
+func checkAlreadyRunning(pidFilePath string) {
+	bytes, err := os.ReadFile(pidFilePath)
+	if err != nil {
+		return
+	}
+
+	pid, err := strconv.Atoi(string(bytes))
+	if err != nil {
+		return
+	}
+
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return
+	}
+
+	if process.Signal(syscall.Signal(0)) == nil {
+		panic("marlinraker is already running (" + string(bytes) + ")")
+	}
 }

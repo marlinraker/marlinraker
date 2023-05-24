@@ -7,29 +7,71 @@ import (
 	"io"
 	"marlinraker/src/files"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"sync"
+	"syscall"
 )
 
-func SetupLogger(dataDir string) (afero.File, error) {
+var (
+	logFile afero.File
+	mu      = &sync.Mutex{}
+)
 
-	logFilePath := filepath.Join(dataDir, "logs/marlinraker.log")
-	logFile, err := files.Fs.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
-	if err != nil {
-		return nil, err
+func SetupLogger() error {
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if err := openLogFile(); err != nil {
+		return err
 	}
 
-	log.SetOutput(io.MultiWriter(logFile, os.Stdout))
 	log.SetLevel(log.InfoLevel)
 	log.SetFormatter(&nested.Formatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 		NoColors:        true,
 	})
 
-	return logFile, nil
+	return nil
 }
 
-func CloseLogger(logFile afero.File) {
-	if err := logFile.Close(); err != nil {
-		panic(err)
+func HandleRotate() {
+
+	ch := make(chan os.Signal)
+	signal.Notify(ch, syscall.SIGUSR1)
+
+	for {
+		<-ch
+		log.Println("Log rotate requested")
+		mu.Lock()
+		if err := openLogFile(); err != nil {
+			panic(err)
+		}
+		mu.Unlock()
 	}
+}
+
+func CloseLogger() error {
+	mu.Lock()
+	defer mu.Unlock()
+	return logFile.Close()
+}
+
+func openLogFile() error {
+
+	var err error
+	if logFile != nil {
+		if err = logFile.Close(); err != nil {
+			return err
+		}
+	}
+
+	logFilePath := filepath.Join(files.DataDir, "logs/marlinraker.log")
+	logFile, err = files.Fs.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	if err != nil {
+		return err
+	}
+	log.SetOutput(io.MultiWriter(logFile, os.Stdout))
+	return nil
 }
