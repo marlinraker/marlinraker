@@ -4,7 +4,7 @@ import (
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/util"
 	"net/http"
-	"syscall"
+	"os/exec"
 )
 
 type MachineRebootResult string
@@ -12,7 +12,7 @@ type MachineRebootResult string
 func MachineReboot(*connections.Connection, *http.Request, Params) (any, error) {
 	go func() {
 		connections.TerminateAllConnections()
-		if err := syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART); err != nil {
+		if err := exec.Command("systemctl", "reboot").Err; err != nil {
 			util.LogError(err)
 		}
 	}()
