@@ -13,7 +13,7 @@ import (
 
 func FindSerialPort(config *config.Config) (string, int) {
 
-	if config.Serial.Port == "auto" {
+	if config.Serial.Port == "auto" && config.Serial.BaudRate == "auto" {
 		lastPath, _ := database.GetItem("marlinraker", "lastPath", true)
 		lastBaudRate, _ := database.GetItem("marlinraker", "lastBaudRate", true)
 
@@ -64,8 +64,8 @@ func scan(config *config.Config) (string, int) {
 
 	var baudRates []int
 	switch baudRate := config.Serial.BaudRate.(type) {
-	case int:
-		baudRates = []int{baudRate}
+	case int64:
+		baudRates = []int{int(baudRate)}
 		break
 	default:
 		baudRates = []int{250000, 115200, 19200}
