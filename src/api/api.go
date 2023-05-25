@@ -130,6 +130,11 @@ func (HttpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
 			util.LogError(err)
 		}
 
+	case marlinraker.Config.Misc.OctoprintCompat && strings.HasPrefix(requestPath, "/api/"):
+		if err := handleOctoPrint(writer, request); err != nil {
+			util.LogError(err)
+		}
+
 	case isFilePath(requestPath) && (request.Method == "GET" || request.Method == "DELETE"):
 		if request.Method == "GET" {
 			handleFileDownload(writer, request)

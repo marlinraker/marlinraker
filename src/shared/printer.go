@@ -21,6 +21,8 @@ type PrintManager interface {
 	Resume(context ExecutorContext) error
 	Cancel(context ExecutorContext) error
 	Reset(context ExecutorContext) error
+	CanPrint(fileName string) bool
+	IsPrinting() bool
 	GetState() string
 }
 

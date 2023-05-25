@@ -26,8 +26,9 @@ type ExtendedFileMeta struct {
 }
 
 type FileUploadAction struct {
-	Item   ActionItem `json:"item"`
-	Action string     `json:"action"`
+	Item         ActionItem `json:"item"`
+	Action       string     `json:"action"`
+	PrintStarted *bool      `json:"print_started,omitempty"`
 }
 
 type FileDeleteAction struct {
@@ -35,7 +36,7 @@ type FileDeleteAction struct {
 	Action string     `json:"action"`
 }
 
-func Upload(rootName string, path string, checksum string, header *multipart.FileHeader) (FileUploadAction, error) {
+func Upload(rootName, path, checksum string, header *multipart.FileHeader) (FileUploadAction, error) {
 
 	fileName := header.Filename
 	sourceFile, err := header.Open()

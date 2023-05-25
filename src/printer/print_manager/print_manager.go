@@ -142,6 +142,21 @@ func (manager *PrintManager) GetState() string {
 	return manager.state.Load()
 }
 
+func (manager *PrintManager) CanPrint(fileName string) bool {
+	job, state := manager.currentJob.Load(), manager.state.Load()
+	if manager.isPrinting(job, state) || !gcodeExtensionRegex.MatchString(fileName) {
+		return false
+	}
+	if _, err := files.Fs.Stat(filepath.Join(files.DataDir, "gcodes", fileName)); err != nil {
+		return false
+	}
+	return true
+}
+
+func (manager *PrintManager) IsPrinting() bool {
+	return manager.isPrinting(manager.currentJob.Load(), manager.state.Load())
+}
+
 func (manager *PrintManager) isPrinting(job *printJob, state string) bool {
 	if job == nil {
 		return false
