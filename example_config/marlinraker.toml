@@ -1,4 +1,4 @@
-#<include printer.toml>
+#include printer.toml
 
 [web]
 port = 7125

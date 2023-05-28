@@ -1,14 +1,16 @@
 package config
 
 import (
-	"errors"
 	"github.com/BurntSushi/toml"
 	"github.com/samber/lo"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	resources "marlinraker"
 	"marlinraker/src/files"
+	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 type Web struct {
@@ -73,7 +75,7 @@ type Config struct {
 	Macros  map[string]Macro `toml:"macros"`
 }
 
-var includeRegex = regexp.MustCompile(`(?mi)^#<include +([\w\-. /\\]+?)>.*$`)
+var includeRegex = regexp.MustCompile(`(?mi)^#include +(\S+).*$`)
 
 func CopyDefaults(targetDir string) error {
 	configPath := filepath.Join(targetDir, "marlinraker.toml")
@@ -110,36 +112,67 @@ func resolve(currentPath string, resolvedSoFar []string) (string, error) {
 		currentPath, _ = filepath.Abs(currentPath)
 	}
 
-	contentBytes, err := afero.ReadFile(files.Fs, currentPath)
+	stat, err := files.Fs.Stat(currentPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			log.Warnln("File or directory \"" + currentPath + "\" not found")
+			return "", nil
+		}
 		return "", err
 	}
-	content := string(contentBytes)
-	resolvedSoFar = append(resolvedSoFar, currentPath)
 
-	matches := includeRegex.FindAllStringIndex(content, -1)
-	for i := len(matches) - 1; i >= 0; i-- {
-		start, end := matches[i][0], matches[i][1]
-		str := content[start:end]
-		filename := includeRegex.FindStringSubmatch(str)[1]
-		nextPath, err := filepath.Abs(filepath.Join(filepath.Dir(currentPath), filename))
+	if stat.IsDir() {
+		dirFiles, err := afero.ReadDir(files.Fs, currentPath)
 		if err != nil {
 			return "", err
 		}
-
-		if lo.Contains(resolvedSoFar, nextPath) {
-			return "", errors.New("Error in " + currentPath + ": Cannot resolve cyclic dependency \"" + filename + "\"")
+		contents := make([]string, 0)
+		for _, file := range dirFiles {
+			if file.IsDir() {
+				continue
+			}
+			content, err := resolve(filepath.Join(currentPath, file.Name()), resolvedSoFar)
+			if err != nil {
+				return "", err
+			}
+			contents = append(contents, content)
 		}
+		return strings.Join(contents, "\n"), nil
 
-		result, err := resolve(nextPath, resolvedSoFar)
+	} else {
+
+		contentBytes, err := afero.ReadFile(files.Fs, currentPath)
 		if err != nil {
-			return result, err
+			return "", err
+		}
+		content := string(contentBytes)
+		resolvedSoFar = append(resolvedSoFar, currentPath)
+
+		matches := includeRegex.FindAllStringIndex(content, -1)
+		for i := len(matches) - 1; i >= 0; i-- {
+			start, end := matches[i][0], matches[i][1]
+			str := content[start:end]
+			filename := includeRegex.FindStringSubmatch(str)[1]
+			nextPath, err := filepath.Abs(filepath.Join(filepath.Dir(currentPath), filename))
+			if err != nil {
+				return "", err
+			}
+
+			if lo.Contains(resolvedSoFar, nextPath) {
+				log.Warnln("Cannot resolve cyclic dependency \"" + filename + "\" in \"" + currentPath + "\"")
+				continue
+			}
+
+			result, err := resolve(nextPath, resolvedSoFar)
+			if err != nil {
+				return "", err
+			}
+
+			content = content[0:start] + result + content[end:]
 		}
 
-		content = content[0:start] + result + content[end:]
+		return content, nil
 	}
-
-	return content, nil
 }
 
 func DefaultConfig() *Config {

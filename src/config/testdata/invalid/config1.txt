@@ -1,1 +1,1 @@
-#<include config2.txt>
+#include subfolder/

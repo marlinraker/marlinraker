@@ -45,7 +45,7 @@ func Init(dataDir string) {
 
 	Config, err = config.LoadConfig(filepath.Join(configDir, "marlinraker.toml"))
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	KlipperSettings, KlipperConfig = config.GenerateFakeKlipperConfig(Config)
 

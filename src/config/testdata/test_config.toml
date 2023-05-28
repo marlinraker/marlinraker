@@ -1,4 +1,4 @@
-#<include test_printer.toml>
+#include test_printer.toml
 
 [web]
 bind_address = "1.2.3.4"

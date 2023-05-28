@@ -1,7 +1,10 @@
 package config
 
 import (
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"gotest.tools/assert"
+	"strings"
 	"testing"
 )
 
@@ -76,7 +79,14 @@ func TestResolve(t *testing.T) {
 	})
 
 	t.Run("Cyclic dependency detection", func(t *testing.T) {
+
+		hook := test.Hook{}
+		logrus.AddHook(&hook)
+
 		_, err := resolve("testdata/invalid/config1.txt", []string{})
-		assert.ErrorContains(t, err, "Cannot resolve cyclic dependency \"config1.txt\"")
+		assert.NilError(t, err)
+
+		message := hook.LastEntry().Message
+		assert.Assert(t, strings.HasPrefix(message, "Cannot resolve cyclic dependency"))
 	})
 }
