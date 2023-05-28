@@ -98,8 +98,17 @@ func writeExecutorResponse(writer http.ResponseWriter, method string, url string
 
 func handleFileDownload(writer http.ResponseWriter, request *http.Request) {
 	path := util.SanitizePath(strings.TrimPrefix(request.URL.Path, "/server/files/"))
-	diskPath := filepath.Join(files.DataDir, util.SanitizePath(path))
-	http.ServeFile(writer, request, diskPath)
+
+	switch path {
+	case "klippy.log", "moonraker.log", "marlinraker.log":
+		diskPath := filepath.Join(files.DataDir, "logs/marlinraker.log")
+		writer.Header().Set("Content-Disposition", `attachment; filename="marlinraker.log"`)
+		http.ServeFile(writer, request, diskPath)
+
+	default:
+		diskPath := filepath.Join(files.DataDir, util.SanitizePath(path))
+		http.ServeFile(writer, request, diskPath)
+	}
 }
 
 func handleFileDelete(writer http.ResponseWriter, request *http.Request) error {

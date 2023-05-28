@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/rs/cors"
+	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/api/executors"
 	"marlinraker/src/files"
@@ -62,6 +63,7 @@ var socketExecutors = map[string]Executor{
 	"server.gcode_store":            executors.ServerGcodeStore,
 	"server.history.list":           executors.ServerHistoryList,
 	"server.info":                   executors.ServerInfo,
+	"server.logs.rollover":          executors.ServerLogsRollover,
 	"server.temperature_store":      executors.ServerTemperatureStore,
 }
 
@@ -104,6 +106,7 @@ var httpExecutors = map[string]map[string]Executor{
 		"/server/files/move":         executors.ServerFilesMove,
 		"/server/files/upload":       executors.ServerFilesUpload,
 		"/server/files/zip":          executors.ServerFilesZip,
+		"/server/logs/rollover":      executors.ServerLogsRollover,
 	},
 	"DELETE": {
 		"/server/database/item":   executors.ServerDatabaseDeleteItem,
@@ -165,5 +168,5 @@ func isFilePath(path string) bool {
 			return true
 		}
 	}
-	return false
+	return lo.Contains([]string{"/server/files/klippy.log", "/server/files/moonraker.log", "/server/files/marlinraker.log"}, path)
 }
