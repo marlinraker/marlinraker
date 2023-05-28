@@ -12,7 +12,7 @@ type ThrottledState struct {
 }
 
 var bitFlags = map[int]string{
-	0:  "Under-Voltage detected",
+	0:  "Under-Voltage Detected",
 	1:  "Frequency Capped",
 	2:  "Currently Throttled",
 	3:  "Temperature Limit Active",
