@@ -11,7 +11,6 @@ import (
 	"marlinraker/src/scanner"
 	"marlinraker/src/system_info"
 	"marlinraker/src/util"
-	"path/filepath"
 	"strconv"
 )
 
@@ -33,23 +32,13 @@ var (
 	Printer         *printer.Printer
 )
 
-func Init(dataDir string) {
+func Init(cfg *config.Config) {
 	log.Println("Starting Marlinraker " + constants.Version)
 
-	configDir := filepath.Join(dataDir, "config")
+	Config = cfg
+	KlipperSettings, KlipperConfig = config.GenerateFakeKlipperConfig(cfg)
 
-	var err error
-	if err = config.CopyDefaults(configDir); err != nil {
-		panic(err)
-	}
-
-	Config, err = config.LoadConfig(filepath.Join(configDir, "marlinraker.toml"))
-	if err != nil {
-		log.Panic(err)
-	}
-	KlipperSettings, KlipperConfig = config.GenerateFakeKlipperConfig(Config)
-
-	if Config.Misc.ExtendedLogs {
+	if cfg.Misc.ExtendedLogs {
 		log.SetLevel(log.DebugLevel)
 	}
 

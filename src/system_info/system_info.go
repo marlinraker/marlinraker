@@ -1,11 +1,10 @@
 package system_info
 
-import "marlinraker/src/system_info/procfs"
-
-type serviceState struct {
-	ActiveState string `json:"active_state"`
-	SubState    string `json:"sub_state"`
-}
+import (
+	"github.com/samber/lo"
+	"marlinraker/src/service"
+	"marlinraker/src/system_info/procfs"
+)
 
 type virtualization struct {
 	VirtType       string `json:"virt_type"`
@@ -13,14 +12,14 @@ type virtualization struct {
 }
 
 type SystemInfo struct {
-	CpuInfo           *procfs.CpuInfo           `json:"cpu_info"`
-	SdInfo            *procfs.SdInfo            `json:"sd_info"`
-	Distribution      *procfs.Distribution      `json:"distribution"`
-	AvailableServices []string                  `json:"available_services"`
-	InstanceIds       map[string]string         `json:"instance_ids"`
-	ServiceState      map[string]serviceState   `json:"service_state"`
-	Virtualization    *virtualization           `json:"virtualization"`
-	Network           map[string]procfs.Network `json:"network"`
+	CpuInfo           *procfs.CpuInfo              `json:"cpu_info"`
+	SdInfo            *procfs.SdInfo               `json:"sd_info"`
+	Distribution      *procfs.Distribution         `json:"distribution"`
+	AvailableServices []string                     `json:"available_services"`
+	InstanceIds       map[string]string            `json:"instance_ids"`
+	ServiceState      map[string]service.UnitState `json:"service_state"`
+	Virtualization    *virtualization              `json:"virtualization"`
+	Network           map[string]procfs.Network    `json:"network"`
 }
 
 func GetSystemInfo() (*SystemInfo, error) {
@@ -42,13 +41,18 @@ func GetSystemInfo() (*SystemInfo, error) {
 		return nil, err
 	}
 
+	state, err := service.GetServiceState()
+	if err != nil {
+		return nil, err
+	}
+
 	return &SystemInfo{
 		CpuInfo:           cpuInfo,
 		SdInfo:            sdInfo,
 		Distribution:      distribution,
-		AvailableServices: []string{},
+		AvailableServices: lo.Keys(state),
 		InstanceIds:       map[string]string{},
-		ServiceState:      map[string]serviceState{},
+		ServiceState:      state,
 		Virtualization:    &virtualization{"none", "none"},
 		Network:           network,
 	}, nil

@@ -178,7 +178,7 @@ func (context *executorContext) flush(cmd command) {
 
 		subContext, err := context.MakeSubContext(context.Name() + "/" + name)
 		if err != nil {
-			panic(err)
+			log.Panic(err)
 		}
 
 		if err := <-context.printer.MacroManager.ExecuteMacro(macro, subContext, cmd.gcode); err != nil {

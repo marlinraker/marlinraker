@@ -5,10 +5,12 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/api"
+	"marlinraker/src/config"
 	"marlinraker/src/database"
 	"marlinraker/src/files"
 	"marlinraker/src/logger"
 	"marlinraker/src/marlinraker"
+	"marlinraker/src/service"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -42,7 +44,7 @@ func main() {
 	}
 	defer func() {
 		if err := os.Remove(pidFilePath); err != nil {
-			panic(err)
+			log.Panic(err)
 		}
 	}()
 
@@ -62,10 +64,20 @@ func main() {
 	go logger.HandleRotate()
 
 	if err := database.Init(); err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
-	marlinraker.Init(dataDir)
+	cfg, err := config.LoadConfig(filepath.Join(dataDir, "config/marlinraker.toml"))
+	if err != nil {
+		log.Panic(err)
+	}
+
+	if err := service.Init(cfg); err != nil {
+		log.Panic(err)
+	}
+	defer service.Close()
+
+	marlinraker.Init(cfg)
 
 	go api.StartServer()
 
@@ -93,6 +105,6 @@ func checkAlreadyRunning(pidFilePath string) {
 	}
 
 	if process.Signal(syscall.Signal(0)) == nil {
-		panic("marlinraker is already running (" + string(bytes) + ")")
+		log.Panic("marlinraker is already running (" + string(bytes) + ")")
 	}
 }

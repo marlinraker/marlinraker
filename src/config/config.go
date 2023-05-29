@@ -5,7 +5,6 @@ import (
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
-	resources "marlinraker"
 	"marlinraker/src/files"
 	"os"
 	"path/filepath"
@@ -77,28 +76,10 @@ type Config struct {
 
 var includeRegex = regexp.MustCompile(`(?mi)^#include +(\S+).*$`)
 
-func CopyDefaults(targetDir string) error {
-	configPath := filepath.Join(targetDir, "marlinraker.toml")
-
-	if _, err := files.Fs.Stat(configPath); err != nil {
-		err := afero.WriteFile(files.Fs, configPath, []byte(resources.ExampleConfig), 0755)
-		if err != nil {
-			return err
-		}
-
-		printerConfigPath := filepath.Join(targetDir, "printer.toml")
-		if _, err := files.Fs.Stat(printerConfigPath); err != nil {
-			err = afero.WriteFile(files.Fs, printerConfigPath, []byte(resources.ExamplePrinterConfig), 0755)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 func LoadConfig(path string) (*Config, error) {
+	if _, err := files.Fs.Stat(path); err != nil {
+		return nil, err
+	}
 	contents, err := resolve(path, []string{})
 	if err != nil {
 		return nil, err
