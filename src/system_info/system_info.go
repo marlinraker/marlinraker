@@ -41,19 +41,21 @@ func GetSystemInfo() (*SystemInfo, error) {
 		return nil, err
 	}
 
-	state, err := service.GetServiceState()
-	if err != nil {
-		return nil, err
-	}
-
-	return &SystemInfo{
+	info := &SystemInfo{
 		CpuInfo:           cpuInfo,
 		SdInfo:            sdInfo,
 		Distribution:      distribution,
-		AvailableServices: lo.Keys(state),
+		AvailableServices: []string{},
 		InstanceIds:       map[string]string{},
-		ServiceState:      state,
+		ServiceState:      map[string]service.UnitState{},
 		Virtualization:    &virtualization{"none", "none"},
 		Network:           network,
-	}, nil
+	}
+
+	state, err := service.GetServiceState()
+	if err == nil {
+		info.AvailableServices = lo.Keys(state)
+		info.ServiceState = state
+	}
+	return info, nil
 }
