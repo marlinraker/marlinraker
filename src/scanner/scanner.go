@@ -11,7 +11,17 @@ import (
 	"time"
 )
 
+var scanning = false
+
 func FindSerialPort(config *config.Config) (string, int) {
+
+	if scanning {
+		return "", 0
+	}
+	scanning = true
+	defer func() {
+		scanning = false
+	}()
 
 	if config.Serial.Port == "auto" && config.Serial.BaudRate == "auto" {
 		lastPath, _ := database.GetItem("marlinraker", "lastPath", true)
