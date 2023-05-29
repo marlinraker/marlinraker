@@ -46,6 +46,7 @@ var socketExecutors = map[string]Executor{
 	"printer.print.pause":           executors.PrinterPrintPause,
 	"printer.print.resume":          executors.PrinterPrintResume,
 	"printer.print.start":           executors.PrinterPrintStart,
+	"printer.restart":               executors.PrinterRestart,
 	"server.config":                 executors.ServerConfig,
 	"server.connection.identify":    executors.ServerConnectionIdentify,
 	"server.database.delete_item":   executors.ServerDatabaseDeleteItem,
@@ -67,6 +68,7 @@ var socketExecutors = map[string]Executor{
 	"server.history.list":           executors.ServerHistoryList,
 	"server.info":                   executors.ServerInfo,
 	"server.logs.rollover":          executors.ServerLogsRollover,
+	"server.restart":                executors.ServerRestart,
 	"server.temperature_store":      executors.ServerTemperatureStore,
 }
 
@@ -107,12 +109,14 @@ var httpExecutors = map[string]map[string]Executor{
 		"/printer/print/pause":       executors.PrinterPrintPause,
 		"/printer/print/resume":      executors.PrinterPrintResume,
 		"/printer/print/start":       executors.PrinterPrintStart,
+		"/printer/restart":           executors.PrinterRestart,
 		"/server/database/item":      executors.ServerDatabasePostItem,
 		"/server/files/directory":    executors.ServerFilesPostDirectory,
 		"/server/files/move":         executors.ServerFilesMove,
 		"/server/files/upload":       executors.ServerFilesUpload,
 		"/server/files/zip":          executors.ServerFilesZip,
 		"/server/logs/rollover":      executors.ServerLogsRollover,
+		"/server/restart":            executors.ServerRestart,
 	},
 	"DELETE": {
 		"/server/database/item":   executors.ServerDatabaseDeleteItem,
