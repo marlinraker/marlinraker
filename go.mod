@@ -1,6 +1,6 @@
 module marlinraker
 
-go 1.22.0
+go 1.23.0
 
 toolchain go1.23.1
 
@@ -15,7 +15,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/samber/lo v1.47.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/afero v1.11.0
+	github.com/spf13/afero v1.15.0
 	github.com/stretchr/testify v1.8.1
 	github.com/tidwall/gjson v1.17.3
 	github.com/tidwall/sjson v1.2.5
@@ -43,6 +43,6 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
