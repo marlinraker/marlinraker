@@ -1,6 +1,6 @@
 module marlinraker
 
-go 1.22.0
+go 1.23
 
 toolchain go1.23.1
 
@@ -17,7 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/afero v1.11.0
 	github.com/stretchr/testify v1.8.1
-	github.com/tidwall/gjson v1.17.3
+	github.com/tidwall/gjson v1.19.0
 	github.com/tidwall/sjson v1.2.5
 	go.bug.st/serial v1.6.2
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
