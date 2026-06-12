@@ -4,7 +4,7 @@ WORKDIR /build
 COPY ./ /build
 RUN go build -o marlinraker -ldflags "-s -w" src/main.go
 
-FROM alpine:3.16
+FROM alpine:3.24
 
 RUN adduser -h /marlinraker -G dialout -u 1001 -D marlinraker
 WORKDIR /marlinraker
