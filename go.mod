@@ -1,8 +1,6 @@
 module marlinraker
 
-go 1.22.0
-
-toolchain go1.23.1
+go 1.25.0
 
 require (
 	github.com/BurntSushi/toml v1.4.0
@@ -19,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/tidwall/gjson v1.17.3
 	github.com/tidwall/sjson v1.2.5
-	go.bug.st/serial v1.6.2
+	go.bug.st/serial v1.8.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	gotest.tools v2.2.0+incompatible
 )
@@ -28,7 +26,6 @@ require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.0 // indirect
-	github.com/creack/goselect v0.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -42,7 +39,7 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	golang.org/x/crypto v0.27.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
