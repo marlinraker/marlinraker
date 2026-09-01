@@ -1,6 +1,6 @@
 module marlinraker
 
-go 1.22.0
+go 1.23
 
 toolchain go1.23.1
 
@@ -8,7 +8,7 @@ require (
 	github.com/BurntSushi/toml v1.4.0
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/antonfisher/nested-logrus-formatter v1.3.1
-	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/google/go-cmp v0.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
