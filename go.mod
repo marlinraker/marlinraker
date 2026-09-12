@@ -1,8 +1,6 @@
 module marlinraker
 
-go 1.22.0
-
-toolchain go1.23.1
+go 1.26.0
 
 require (
 	github.com/BurntSushi/toml v1.4.0
@@ -20,7 +18,7 @@ require (
 	github.com/tidwall/gjson v1.17.3
 	github.com/tidwall/sjson v1.2.5
 	go.bug.st/serial v1.6.2
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
+	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
 	gotest.tools v2.2.0+incompatible
 )
 
