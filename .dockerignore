@@ -1,5 +1,5 @@
 *
-!**/*.go
 !go.mod
 !go.sum
-!/example_config
+!src
+!example_config
