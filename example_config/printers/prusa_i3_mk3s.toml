@@ -38,7 +38,7 @@ gcode = """
 """
 
 [macros.pause]
-rename_exising = "pause_base"
+rename_existing = "pause_base"
 gcode = """
   {{ if eq .Printer.print_stats.state "printing" }}
     PAUSE_BASE ; pause print
@@ -63,7 +63,7 @@ gcode = """
 """
 
 [macros.cancel_print]
-rename_exising = "cancel_print_base"
+rename_existing = "cancel_print_base"
 gcode = """
   {{ if eq .Printer.print_stats.state "printing" "paused" }}
     CANCEL_PRINT_BASE ; cancel print

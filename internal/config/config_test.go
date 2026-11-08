@@ -1,6 +1,7 @@
 package config
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -89,5 +90,36 @@ func TestResolve(t *testing.T) {
 
 		message := hook.LastEntry().Message
 		assert.Assert(t, strings.HasPrefix(message, "Cannot resolve cyclic dependency"))
+	})
+}
+
+func TestUnknownKeysWarning(t *testing.T) {
+	hook := test.NewGlobal()
+	t.Cleanup(hook.Reset)
+
+	_, err := parseConfig(`
+[web]
+port = 7125
+cors_domain = ["*"]
+
+[macros.pause]
+rename_existin = "pause_base"
+gcode = "PAUSE_BASE"
+
+[macros.pause.variables]
+anything = 1
+`)
+	assert.NilError(t, err)
+
+	var warnings []string
+	for _, entry := range hook.AllEntries() {
+		if entry.Level == logrus.WarnLevel {
+			warnings = append(warnings, entry.Message)
+		}
+	}
+	slices.Sort(warnings)
+	assert.DeepEqual(t, warnings, []string{
+		`Unknown configuration option "macros.pause.rename_existin", check for typos`,
+		`Unknown configuration option "web.cors_domain", check for typos`,
 	})
 }
