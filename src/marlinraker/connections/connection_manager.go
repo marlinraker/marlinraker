@@ -2,19 +2,24 @@ package connections
 
 import (
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/samber/lo"
-	log "github.com/sirupsen/logrus"
-	"marlinraker/src/util"
+	"slices"
 	"sync"
 	"sync/atomic"
+
+	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 )
 
 type Connection struct {
 	socket     *websocket.Conn
-	mutex      *sync.Mutex
-	Identified bool
+	mutex      sync.Mutex
+	infoMutex  sync.RWMutex
 	Id         int
+	identified bool
+	clientInfo ClientInfo
+}
+
+type ClientInfo struct {
 	ClientName string
 	Version    string
 	ClientType string
@@ -41,43 +46,77 @@ func (connection *Connection) WriteJson(v any) error {
 	return nil
 }
 
+// Identify stores the client information of this connection. It returns false
+// if the connection has already been identified.
+func (connection *Connection) Identify(info ClientInfo) bool {
+	connection.infoMutex.Lock()
+	defer connection.infoMutex.Unlock()
+	if connection.identified {
+		return false
+	}
+	connection.identified, connection.clientInfo = true, info
+	return true
+}
+
+// ClientInfo returns the information the client sent with server.connection.identify.
+func (connection *Connection) ClientInfo() (ClientInfo, bool) {
+	connection.infoMutex.RLock()
+	defer connection.infoMutex.RUnlock()
+	return connection.clientInfo, connection.identified
+}
+
 var (
-	connections     = util.NewThreadSafe(make([]Connection, 0))
-	nextWebsocketId atomic.Int32
+	connectionsMutex sync.RWMutex
+	connections      []*Connection
+	nextWebsocketId  atomic.Int32
 )
 
-func GetConnections() []Connection {
-	return connections.Load()
+// GetConnections returns a snapshot of all currently registered connections.
+func GetConnections() []*Connection {
+	connectionsMutex.RLock()
+	defer connectionsMutex.RUnlock()
+	return slices.Clone(connections)
+}
+
+// FindConnection returns the registered connection with the given id.
+func FindConnection(id int) (*Connection, bool) {
+	connectionsMutex.RLock()
+	defer connectionsMutex.RUnlock()
+	idx := slices.IndexFunc(connections, func(connection *Connection) bool {
+		return connection.Id == id
+	})
+	if idx == -1 {
+		return nil, false
+	}
+	return connections[idx], true
 }
 
 func RegisterConnection(socket *websocket.Conn) *Connection {
-	id := nextWebsocketId.Add(1)
-	connection := Connection{
+	connection := &Connection{
 		socket: socket,
-		mutex:  &sync.Mutex{},
-		Id:     int(id),
+		Id:     int(nextWebsocketId.Add(1)),
 	}
-	connections.Do(func(connections []Connection) []Connection {
-		return append(connections, connection)
-	})
-	return &connection
+	connectionsMutex.Lock()
+	defer connectionsMutex.Unlock()
+	connections = append(connections, connection)
+	return connection
 }
 
 func UnregisterConnection(connection *Connection) {
-	connections.Do(func(connections []Connection) []Connection {
-		return lo.Filter(connections, func(_connection Connection, _ int) bool {
-			return _connection.Id != connection.Id
-		})
+	connectionsMutex.Lock()
+	defer connectionsMutex.Unlock()
+	connections = slices.DeleteFunc(connections, func(other *Connection) bool {
+		return other == connection
 	})
 }
 
 func TerminateAllConnections() {
-	connections.Do(func(connections []Connection) []Connection {
-		for _, connection := range connections {
-			if err := connection.socket.Close(); err != nil {
-				log.Errorf("Failed to close socket %s: %v", connection.socket.RemoteAddr(), err)
-			}
+	connectionsMutex.Lock()
+	defer connectionsMutex.Unlock()
+	for _, connection := range connections {
+		if err := connection.socket.Close(); err != nil {
+			log.Errorf("Failed to close socket %s: %v", connection.socket.RemoteAddr(), err)
 		}
-		return make([]Connection, 0)
-	})
+	}
+	connections = nil
 }

@@ -12,9 +12,11 @@ builds:
       - -s
       - -w
       - -X {{ .ModulePath }}/src/constants.Version={{ .Version }}
-      - -X {{ .ModulePath }}/src/constants.suffix={{- if .IsSnapshot -}}dev+{{ .ShortCommit }}{{- end -}}
     env:
       - CGO_ENABLED=0
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-dev+{{ .ShortCommit }}"
 
 checksum:
   name_template: checksums.txt

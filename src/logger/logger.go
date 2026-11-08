@@ -38,7 +38,7 @@ func SetupLogger() error {
 
 func HandleRotate() {
 
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGUSR1)
 
 	for {

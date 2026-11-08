@@ -2,6 +2,7 @@ package printer
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
@@ -75,6 +76,11 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 	go printer.readPort()
 	err = printer.tryToConnect()
 	if err != nil {
+		// Release the serial port so that the next connection attempt can open it again.
+		// Closing the port also stops readPort, which runs the cleanup.
+		if closeErr := printer.Disconnect(); closeErr != nil {
+			log.Errorf("Failed to close serial port %q: %v", path, closeErr)
+		}
 		return nil, err
 	}
 
@@ -122,38 +128,26 @@ func (printer *Printer) handshake(attempt int) error {
 	printer.context = newExecutorContext(printer, fmt.Sprintf("handshake%d", attempt))
 	defer printer.context.close()
 
-	errCh1, errCh2 := make(chan error), make(chan error)
+	timeout := time.Duration(printer.config.Serial.ConnectionTimeout) * time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	go func() {
-		defer close(errCh1)
-
-		for {
-			info, capabilities, err := parser.ParseM115(<-printer.context.QueueGcode("M115", true))
-			if err != nil {
-				log.Errorf("Failed to parse capabilities: %v", err)
-				continue
-			}
-
-			printer.info, printer.Capabilities = info, capabilities
-			break
+	for {
+		response, err := printer.context.await(ctx, printer.context.QueueGcode("M115", true))
+		if err != nil {
+			return errors.New("printer handshake took too long")
 		}
 
+		info, capabilities, err := parser.ParseM115(response)
+		if err != nil {
+			log.Errorf("Failed to parse capabilities: %v", err)
+			continue
+		}
+
+		printer.info, printer.Capabilities = info, capabilities
 		log.Printf("Identified %s on %s with %d capabilities", printer.info.MachineType, printer.info.FirmwareName, len(printer.Capabilities))
-		errCh1 <- nil
-	}()
-
-	go func() {
-		defer close(errCh2)
-		time.Sleep(time.Duration(printer.config.Serial.ConnectionTimeout) * time.Millisecond)
-		errCh2 <- errors.New("printer handshake took too long")
-	}()
-
-	var err error
-	select {
-	case err = <-errCh1:
-	case err = <-errCh2:
+		return nil
 	}
-	return err
 }
 
 func (printer *Printer) readPort() {
@@ -176,6 +170,11 @@ func (printer *Printer) readPort() {
 }
 
 func (printer *Printer) cleanup() {
+	// The port is closed at this point, so nothing will answer pending commands anymore.
+	// Closing the context releases everyone waiting for a response.
+	if printer.context != nil {
+		printer.context.close()
+	}
 	for _, watcher := range printer.watchers.Load() {
 		watcher.stop()
 	}
@@ -189,59 +188,53 @@ func (printer *Printer) cleanup() {
 func (printer *Printer) setup() error {
 
 	printer.context = newExecutorContext(printer, "main")
-	errorCh1, errorCh2 := make(chan error), make(chan error)
 
-	go func() {
-		defer close(errorCh1)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	timeoutErr := errors.New("printer initialization took too long")
 
-		printer.IsPrusa = strings.HasPrefix(printer.info.FirmwareName, "Prusa-Firmware")
-		if printer.IsPrusa {
-			log.Println("Printer runs Prusa-Firmware")
-		}
-
-		printer.hasEmergencyParser = printer.IsPrusa || printer.Capabilities["EMERGENCY_PARSER"]
-
-		if printer.IsPrusa {
-			c := 1 << 0
-			if !printer.config.Printer.Gcode.ReportVelocity {
-				c |= 1 << 2
-			}
-			<-printer.context.QueueGcode(fmt.Sprintf("M155 S1 C%d", c), true)
-		}
-
-		for {
-			ch := printer.context.QueueGcode("M503", true)
-			limits, err := parser.ParseM503(<-ch)
-			if err != nil {
-				log.Errorf("Failed parsing limits: %v", err)
-				continue
-			}
-			printer.limits = limits
-			break
-		}
-
-		tempWatcher, positionWatcher := newTempWatcher(printer), newPositionWatcher(printer)
-		printer.watchers.Do(func(watchers []watcher) []watcher {
-			return append(watchers, tempWatcher, positionWatcher)
-		})
-		printer.heaters = <-tempWatcher.heatersCh
-
-		errorCh1 <- nil
-	}()
-
-	go func() {
-		defer close(errorCh2)
-		time.Sleep(10 * time.Second)
-		errorCh2 <- errors.New("printer initialization took too long")
-	}()
-
-	var err error
-	select {
-	case err = <-errorCh1:
-	case err = <-errorCh2:
+	printer.IsPrusa = strings.HasPrefix(printer.info.FirmwareName, "Prusa-Firmware")
+	if printer.IsPrusa {
+		log.Println("Printer runs Prusa-Firmware")
 	}
 
-	return err
+	printer.hasEmergencyParser = printer.IsPrusa || printer.Capabilities["EMERGENCY_PARSER"]
+
+	if printer.IsPrusa {
+		c := 1 << 0
+		if !printer.config.Printer.Gcode.ReportVelocity {
+			c |= 1 << 2
+		}
+		if _, err := printer.context.await(ctx, printer.context.QueueGcode(fmt.Sprintf("M155 S1 C%d", c), true)); err != nil {
+			return timeoutErr
+		}
+	}
+
+	for {
+		response, err := printer.context.await(ctx, printer.context.QueueGcode("M503", true))
+		if err != nil {
+			return timeoutErr
+		}
+		limits, err := parser.ParseM503(response)
+		if err != nil {
+			log.Errorf("Failed parsing limits: %v", err)
+			continue
+		}
+		printer.limits = limits
+		break
+	}
+
+	tempWatcher, positionWatcher := newTempWatcher(printer), newPositionWatcher(printer)
+	printer.watchers.Do(func(watchers []watcher) []watcher {
+		return append(watchers, tempWatcher, positionWatcher)
+	})
+
+	select {
+	case printer.heaters = <-tempWatcher.heatersCh:
+		return nil
+	case <-ctx.Done():
+		return timeoutErr
+	}
 }
 
 func (printer *Printer) handleRequestLine(line string) {

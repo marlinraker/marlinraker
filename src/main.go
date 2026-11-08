@@ -83,11 +83,11 @@ func main() {
 
 	go api.StartServer()
 
-	ch := make(chan os.Signal)
-	signal.Notify(ch, os.Interrupt)
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 
-	<-ch
-	log.Println("Received interrupt, shutting down")
+	sig := <-ch
+	log.Printf("Received %s, shutting down", sig)
 }
 
 func checkAlreadyRunning(pidFilePath string) {

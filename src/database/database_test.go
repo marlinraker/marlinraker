@@ -133,14 +133,14 @@ func TestDeleteItem(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, val, 123.)
 
-	val, err = DeleteItem("test", "foo", false)
+	_, err = DeleteItem("test", "foo", false)
 	assert.Error(t, err, `key "foo" in namespace "test" not found`)
 
 	val, err = DeleteItem("foo", "bar", false)
 	assert.NilError(t, err)
 	assert.Equal(t, val, 0.)
 
-	val, err = DeleteItem("marlinraker", "foo", false)
+	_, err = DeleteItem("marlinraker", "foo", false)
 	assert.Error(t, err, "reserved namespace access not allowed")
 
 	{

@@ -20,7 +20,7 @@ import (
 
 type File struct {
 	Path        string  `json:"path"`
-	Modified    float32 `json:"modified"`
+	Modified    float64 `json:"modified"`
 	Size        int64   `json:"size"`
 	Permissions string  `json:"permissions"`
 }
@@ -111,7 +111,7 @@ func ListFiles(rootName string) ([]File, error) {
 
 			files = append(files, File{
 				Path:        relPath,
-				Modified:    float32(info.ModTime().UnixMilli()) / 1000.0,
+				Modified:    float64(info.ModTime().UnixMilli()) / 1000.0,
 				Size:        info.Size(),
 				Permissions: root.Permissions,
 			})

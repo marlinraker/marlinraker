@@ -12,8 +12,8 @@ type ServerConnectionIdentifyResult struct {
 
 func ServerConnectionIdentify(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
 
-	if connection.Identified {
-		return nil, util.NewError(400, "connection already identified")
+	if connection == nil {
+		return nil, util.NewError(400, "server.connection.identify is only available via websocket")
 	}
 
 	clientName, err := params.RequireString("client_name")
@@ -36,8 +36,10 @@ func ServerConnectionIdentify(connection *connections.Connection, _ *http.Reques
 		return nil, err
 	}
 
-	connection.ClientName, connection.Version, connection.ClientType, connection.Url =
-		clientName, version, clientType, url
+	info := connections.ClientInfo{ClientName: clientName, Version: version, ClientType: clientType, Url: url}
+	if !connection.Identify(info) {
+		return nil, util.NewError(400, "connection already identified")
+	}
 
 	return ServerConnectionIdentifyResult{connection.Id}, nil
 }

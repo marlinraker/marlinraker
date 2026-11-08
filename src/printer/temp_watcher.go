@@ -67,6 +67,7 @@ type tempWatcher struct {
 	sensorObjects map[string]*temperatureSensorObject
 	objectsMutex  *sync.Mutex
 	autoReport    bool
+	stopOnce      sync.Once
 }
 
 var (
@@ -77,7 +78,7 @@ func newTempWatcher(printer *Printer) *tempWatcher {
 
 	watcher := &tempWatcher{
 		printer:       printer,
-		heatersCh:     make(chan heatersObject),
+		heatersCh:     make(chan heatersObject, 1),
 		heaterObjects: make(map[string]*heaterObject),
 		sensorObjects: make(map[string]*temperatureSensorObject),
 		closeCh:       make(chan struct{}),
@@ -87,19 +88,19 @@ func newTempWatcher(printer *Printer) *tempWatcher {
 	}
 
 	if watcher.autoReport && !printer.IsPrusa {
-		_ = printer.context.QueueGcode("M115 S1", true)
+		_ = printer.context.QueueGcode("M155 S1", true)
 	}
 
+	watcher.ticker = time.NewTicker(time.Second)
 	go watcher.runTimer()
 	return watcher
 }
 
 func (watcher *tempWatcher) runTimer() {
-	watcher.ticker = time.NewTicker(time.Second)
 	for {
 		select {
 		case <-watcher.closeCh:
-			break
+			return
 		case <-watcher.ticker.C:
 			watcher.tick()
 		}
@@ -130,10 +131,10 @@ func (watcher *tempWatcher) tick() {
 }
 
 func (watcher *tempWatcher) stop() {
-	if watcher.ticker != nil {
+	watcher.stopOnce.Do(func() {
 		watcher.ticker.Stop()
-	}
-	close(watcher.closeCh)
+		close(watcher.closeCh)
+	})
 	printer_objects.UnregisterObject("heaters")
 	for name := range watcher.heaterObjects {
 		printer_objects.UnregisterObject(name)

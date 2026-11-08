@@ -25,7 +25,6 @@ type printJob struct {
 	isPaused       atomic.Bool
 	isStarted      atomic.Bool
 	hasEnded       atomic.Bool
-	reader         *bufio.Reader
 	position       atomic.Int64
 	fileSize       int64
 	progress       util.ThreadSafe[float64]
