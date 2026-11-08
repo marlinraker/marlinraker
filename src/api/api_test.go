@@ -5,7 +5,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
-	"golang.org/x/exp/slices"
 	"gotest.tools/assert"
 	"marlinraker/src/api/executors"
 	"marlinraker/src/api/notification"
@@ -21,6 +20,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
