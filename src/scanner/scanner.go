@@ -74,10 +74,10 @@ func scan(config *config.Config) (string, int) {
 	switch baudRate := config.Serial.BaudRate.(type) {
 	case int64:
 		baudRates = []int{int(baudRate)}
-		break
+	case int:
+		baudRates = []int{baudRate}
 	default:
 		baudRates = []int{250000, 115200, 19200}
-		break
 	}
 
 	for _, path := range ports {

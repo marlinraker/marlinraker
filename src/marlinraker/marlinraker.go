@@ -80,8 +80,12 @@ func Connect() {
 	SetState(Startup, "Connecting to printer...")
 
 	var baudRateInt int
-	port, baudRate := Config.Serial.Port, Config.Serial.BaudRate
-	if baudRate, isInt := baudRate.(int); isInt {
+	port := Config.Serial.Port
+	// TOML integers decode as int64
+	switch baudRate := Config.Serial.BaudRate.(type) {
+	case int64:
+		baudRateInt = int(baudRate)
+	case int:
 		baudRateInt = baudRate
 	}
 	if port == "" || port == "auto" || baudRateInt <= 0 {
