@@ -20,7 +20,7 @@ send_m73 = false
 report_velocity = false
 
 [macros.pause]
-rename_exising = "pause_base"
+rename_existing = "pause_base"
 gcode = """
   PAUSE_BASE
   SAVE_GCODE_STATE NAME=print_pause
@@ -35,7 +35,7 @@ gcode = """
 """
 
 [macros.cancel_print]
-rename_exising = "cancel_print_base"
+rename_existing = "cancel_print_base"
 gcode = """
   CANCEL_PRINT_BASE
   _PARK_TOOLHEAD

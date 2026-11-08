@@ -204,6 +204,16 @@ func DefaultConfig() *Config {
 
 func parseConfig(contents string) (*Config, error) {
 	config := DefaultConfig()
-	_, err := toml.Decode(contents, config)
-	return config, err
+	metadata, err := toml.Decode(contents, config)
+	if err != nil {
+		return config, err
+	}
+	for _, key := range metadata.Undecoded() {
+		// macro variables are free-form
+		if len(key) >= 3 && key[0] == "macros" && key[2] == "variables" {
+			continue
+		}
+		log.Warnf("Unknown configuration option %q, check for typos", key.String())
+	}
+	return config, nil
 }
