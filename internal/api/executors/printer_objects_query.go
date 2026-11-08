@@ -1,0 +1,103 @@
+package executors
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/samber/lo"
+
+	"github.com/marlinraker/marlinraker/internal/marlinraker/connections"
+	"github.com/marlinraker/marlinraker/internal/printer_objects"
+	"github.com/marlinraker/marlinraker/internal/system_info/procfs"
+	"github.com/marlinraker/marlinraker/internal/util"
+)
+
+type PrinterObjectsQueryResult struct {
+	EventTime float64                                `json:"eventtime"`
+	Status    map[string]printer_objects.QueryResult `json:"status"`
+}
+
+func PrinterObjectsQueryHttp(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
+
+	eventTime, err := procfs.GetUptime()
+	if err != nil {
+		return nil, err
+	}
+
+	results := PrinterObjectsQueryResult{
+		EventTime: eventTime,
+		Status:    make(map[string]printer_objects.QueryResult),
+	}
+
+	for name, attributes := range params {
+		attributesStr := fmt.Sprintf("%v", attributes)
+		var attributes []string = nil
+		if attributesStr != "" {
+			attributes = strings.Split(attributesStr, ",")
+		}
+		if result, err := query(name, attributes); err == nil {
+			results.Status[name] = result
+		} else {
+			return nil, err
+		}
+	}
+
+	return results, nil
+}
+
+func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
+
+	objects, exist := params["objects"].(map[string]any)
+	if !exist {
+		return nil, util.NewError(400, "objects param is required")
+	}
+
+	eventTime, err := procfs.GetUptime()
+	if err != nil {
+		return nil, err
+	}
+
+	results := PrinterObjectsQueryResult{
+		EventTime: eventTime,
+		Status:    make(map[string]printer_objects.QueryResult),
+	}
+
+	for name, attributes := range objects {
+		var attributesStr []string = nil
+		if attributes != nil {
+			if attributes, isArray := attributes.([]any); isArray {
+				attributesStr = lo.Map(attributes, func(attr any, _ int) string {
+					return fmt.Sprintf("%v", attr)
+				})
+			} else {
+				return nil, util.NewError(400, "subscribed topics have to be nil or string list")
+			}
+		}
+		if result, err := query(name, attributesStr); err == nil {
+			results.Status[name] = result
+		} else {
+			return nil, err
+		}
+	}
+
+	return results, nil
+}
+
+func query(name string, attributes []string) (printer_objects.QueryResult, error) {
+	result, err := printer_objects.Query(name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query %s: %w", name, err)
+	}
+
+	if len(attributes) > 0 {
+		filteredResult := make(printer_objects.QueryResult)
+		for _, attribute := range attributes {
+			if value, exists := result[attribute]; exists {
+				filteredResult[attribute] = value
+			}
+		}
+		result = filteredResult
+	}
+	return result, nil
+}

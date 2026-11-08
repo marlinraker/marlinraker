@@ -1,5 +1,6 @@
 *
 !go.mod
 !go.sum
-!src
+!cmd
+!internal
 !example_config

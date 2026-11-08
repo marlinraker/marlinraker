@@ -1,4 +1,4 @@
-module marlinraker
+module github.com/marlinraker/marlinraker
 
 go 1.26.0
 
@@ -20,7 +20,6 @@ require (
 	github.com/tidwall/gjson v1.20.1
 	github.com/tidwall/sjson v1.2.7
 	go.bug.st/serial v1.8.0
-	golang.org/x/exp v0.0.0-20261106192419-47ce03d25ef0
 	gotest.tools v2.2.0+incompatible
 )
 

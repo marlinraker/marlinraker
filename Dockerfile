@@ -4,11 +4,12 @@ WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY src ./src
+COPY cmd ./cmd
+COPY internal ./internal
 ARG VERSION=0.0.0-dev
 RUN CGO_ENABLED=0 go build -trimpath \
-    -ldflags "-s -w -X marlinraker/src/constants.Version=${VERSION}" \
-    -o marlinraker ./src
+    -ldflags "-s -w -X github.com/marlinraker/marlinraker/internal/constants.Version=${VERSION}" \
+    -o marlinraker ./cmd/marlinraker
 
 FROM alpine:3.24
 
