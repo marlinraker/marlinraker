@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	log "github.com/sirupsen/logrus"
@@ -10,19 +11,28 @@ import (
 	"marlinraker/src/files"
 	"marlinraker/src/logger"
 	"marlinraker/src/marlinraker"
+	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/service"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
 )
 
 func main() {
+	os.Exit(run())
+}
+
+// run starts Marlinraker and returns the process exit code. Deferred cleanup
+// runs before main calls os.Exit.
+func run() int {
+	exitCode := 0
 
 	if os.Geteuid() == 0 {
 		fmt.Println("Please do not run this program as root")
-		return
+		return 1
 	}
 
 	relPath := os.Getenv("MARLINRAKER_DIR")
@@ -39,7 +49,7 @@ func main() {
 
 	pidFilePath := filepath.Join(dataDir, "marlinraker.pid")
 	checkAlreadyRunning(pidFilePath)
-	if err := os.WriteFile(pidFilePath, []byte(fmt.Sprint(os.Getpid())), 0755); err != nil {
+	if err := os.WriteFile(pidFilePath, []byte(fmt.Sprint(os.Getpid())), 0644); err != nil {
 		panic(err)
 	}
 	defer func() {
@@ -65,13 +75,13 @@ func main() {
 
 	if err := database.Init(); err != nil {
 		log.Errorf("Unable to initialize database: %v", err)
-		return
+		return 1
 	}
 
 	cfg, err := config.LoadConfig(filepath.Join(dataDir, "config/marlinraker.toml"))
 	if err != nil {
 		log.Errorf("Unable to load configuration: %v", err)
-		return
+		return 1
 	}
 
 	if err := service.Init(cfg); err != nil {
@@ -81,13 +91,26 @@ func main() {
 
 	marlinraker.Init(cfg)
 
-	go api.StartServer()
+	server, serverErr := api.StartServer()
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 
-	sig := <-ch
-	log.Printf("Received %s, shutting down", sig)
+	select {
+	case sig := <-ch:
+		log.Printf("Received %s, shutting down", sig)
+	case err := <-serverErr:
+		log.Errorf("HTTP server failed: %v", err)
+		exitCode = 1
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Errorf("Failed to shut down HTTP server: %v", err)
+	}
+	connections.TerminateAllConnections()
+	return exitCode
 }
 
 func checkAlreadyRunning(pidFilePath string) {

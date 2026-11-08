@@ -33,10 +33,13 @@ type RpcErrorResponse struct {
 }
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
+	CheckOrigin: func(request *http.Request) bool {
+		return origins.isAllowed(request, request.Header.Get("Origin"))
 	},
 }
+
+// maxMessageSize limits the size of a single websocket message from a client.
+const maxMessageSize = 4 << 20
 
 func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 	socket, err := upgrader.Upgrade(writer, request, nil)
@@ -44,6 +47,7 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 		return err
 	}
 
+	socket.SetReadLimit(maxMessageSize)
 	connection := connections.RegisterConnection(socket)
 
 	for {

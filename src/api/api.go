@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"github.com/rs/cors"
 	"github.com/samber/lo"
@@ -9,8 +10,10 @@ import (
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
+	"marlinraker/src/util"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Error struct {
@@ -163,21 +166,60 @@ func handlePath(writer http.ResponseWriter, request *http.Request, requestPath s
 	}
 }
 
-func StartServer() {
-	address := fmt.Sprintf("%s:%d", marlinraker.Config.Web.BindAddress, marlinraker.Config.Web.Port)
-	log.Printf("Listening on %s", address)
+// origins decides which browser origins may use the API. It is replaced by
+// StartServer with the configured cors_domains.
+var origins = newOriginChecker(nil)
 
-	err := http.ListenAndServe(address, cors.AllowAll().Handler(HttpHandler{}))
-	if err != nil {
-		panic(err)
+// StartServer starts the HTTP server in the background. The returned channel
+// receives the error if the server stops unexpectedly.
+func StartServer() (*http.Server, <-chan error) {
+	address := fmt.Sprintf("%s:%d", marlinraker.Config.Web.BindAddress, marlinraker.Config.Web.Port)
+	origins = newOriginChecker(marlinraker.Config.Web.CorsDomains)
+
+	corsHandler := cors.New(cors.Options{
+		AllowOriginVaryRequestFunc: func(request *http.Request, origin string) (bool, []string) {
+			return origins.isAllowed(request, origin), nil
+		},
+		AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodHead},
+		AllowedHeaders: []string{"*"},
+	})
+
+	server := &http.Server{
+		Addr:              address,
+		Handler:           origins.handler(corsHandler.Handler(HttpHandler{})),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
 	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		log.Printf("Listening on %s", address)
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+	return server, errCh
 }
 
 func isFilePath(path string) bool {
-	for _, root := range files.FileRoots {
-		if strings.HasPrefix(path, "/server/files/"+root.Name) {
-			return true
-		}
+	if lo.Contains([]string{"/server/files/klippy.log", "/server/files/moonraker.log", "/server/files/marlinraker.log"}, path) {
+		return true
 	}
-	return lo.Contains([]string{"/server/files/klippy.log", "/server/files/moonraker.log", "/server/files/marlinraker.log"}, path)
+	_, ok := fileRootOf(path)
+	return ok
+}
+
+// fileRootOf returns the file root a /server/files/... request path points
+// into, after resolving "..". It returns false if the path does not stay inside
+// a registered file root.
+func fileRootOf(requestPath string) (files.FileRoot, bool) {
+	relPath, found := strings.CutPrefix(requestPath, "/server/files/")
+	if !found {
+		return files.FileRoot{}, false
+	}
+	rootName, _, _ := strings.Cut(util.SanitizePath(relPath), "/")
+	return lo.Find(files.FileRoots, func(root files.FileRoot) bool {
+		return root.Name == rootName
+	})
 }
