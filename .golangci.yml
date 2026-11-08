@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  # errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - misspell
+    - nilerr
+    - unconvert
+  settings:
+    errcheck:
+      exclude-functions:
+        - (*github.com/gorilla/websocket.Conn).Close
+
+formatters:
+  enable:
+    - gofmt

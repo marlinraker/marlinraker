@@ -87,7 +87,7 @@ func subscribe(connection *connections.Connection, subscriptions map[string][]st
 		printer_objects.Subscribe(connection, name, attributes)
 		result, err := printer_objects.Query(name)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("failed to query %s: %v", name, err))
+			errs = append(errs, fmt.Errorf("failed to query %s: %w", name, err))
 			continue
 		}
 

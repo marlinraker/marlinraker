@@ -85,7 +85,7 @@ func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, param
 func query(name string, attributes []string) (printer_objects.QueryResult, error) {
 	result, err := printer_objects.Query(name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query %s: %v", name, err)
+		return nil, fmt.Errorf("failed to query %s: %w", name, err)
 	}
 
 	if len(attributes) > 0 {

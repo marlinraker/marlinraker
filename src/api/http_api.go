@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"marlinraker/src/api/executors"
@@ -66,7 +67,7 @@ func writeExecutorResponse(writer http.ResponseWriter, method string, url string
 	if err != nil {
 		log.Errorf("Error while executing %s %s: %v", method, url, err)
 		code := 500
-		if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
+		if executorError := (*util.ExecutorError)(nil); errors.As(err, &executorError) {
 			code = executorError.Code
 		}
 		bytes, err := json.Marshal(ErrorResponse{Error: Error{Code: code, Message: err.Error()}})

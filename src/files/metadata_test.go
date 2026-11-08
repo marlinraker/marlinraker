@@ -30,6 +30,16 @@ func TestMetadata(t *testing.T) {
 	metadata, err := ScanMetadata(fileName)
 	assert.NilError(t, err)
 
+	// The 32x32 and 300x300 thumbnails are re-encoded by the PNG encoder, whose
+	// output size changes between Go versions. Check that the reported sizes match
+	// the written files, then ignore them in the comparison below.
+	assert.Equal(t, len(metadata.Thumbnails), 3)
+	for _, thumbnail := range metadata.Thumbnails {
+		stat, err := Fs.Stat(filepath.Join(DataDir, "gcodes", thumbnail.RelativePath))
+		assert.NilError(t, err)
+		assert.Equal(t, int64(thumbnail.Size), stat.Size())
+	}
+
 	assert.DeepEqual(t, metadata, &Metadata{
 		FileName:            fileName,
 		Size:                4027472,
@@ -58,17 +68,15 @@ func TestMetadata(t *testing.T) {
 			{
 				Width:        32,
 				Height:       32,
-				Size:         1893,
 				RelativePath: ".thumbs/benchy_prusaslicer-32x32.png",
 			},
 			{
 				Width:        300,
 				Height:       300,
-				Size:         54589,
 				RelativePath: ".thumbs/benchy_prusaslicer-300x300.png",
 			},
 		},
-	}, cmpopts.IgnoreFields(Metadata{}, "Modified"))
+	}, cmpopts.IgnoreFields(Metadata{}, "Modified"), cmpopts.IgnoreFields(Thumbnail{}, "Size"))
 
 	err = StoreMetadata(metadata)
 	assert.NilError(t, err)

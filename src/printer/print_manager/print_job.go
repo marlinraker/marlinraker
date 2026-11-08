@@ -159,7 +159,9 @@ func (job *printJob) pause(context shared.ExecutorContext) bool {
 		job.printDuration.Do(func(duration time.Duration) time.Duration {
 			return duration + now.Sub(job.lastResumeTime.Load())
 		})
-		job.manager.setState("paused")
+		if err := job.manager.setState("paused"); err != nil {
+			log.Error(err)
+		}
 		return true
 	}
 	return false
@@ -173,7 +175,9 @@ func (job *printJob) resume(context shared.ExecutorContext) bool {
 		job.isPaused.Store(false)
 		close(job.getPauseCh())
 		job.lastResumeTime.Store(time.Now())
-		job.manager.setState("printing")
+		if err := job.manager.setState("printing"); err != nil {
+			log.Error(err)
+		}
 		return true
 	}
 	return false
@@ -199,7 +203,9 @@ func (job *printJob) finish(state string, context shared.ExecutorContext) {
 			return duration + now.Sub(job.lastResumeTime.Load())
 		})
 	}
-	job.manager.setState(state)
+	if err := job.manager.setState(state); err != nil {
+		log.Error(err)
+	}
 }
 
 func (job *printJob) waitForPrintMoves(context shared.ExecutorContext) {

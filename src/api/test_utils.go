@@ -83,10 +83,11 @@ func testSocket[Result any](t *testing.T, method string, params executors.Params
 		defer server.Close()
 		socketUrl := fmt.Sprintf("ws%s", server.URL[4:])
 
-		socket, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
+		socket, response, err := websocket.DefaultDialer.Dial(socketUrl, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		_ = response.Body.Close()
 		defer func(socket *websocket.Conn) {
 			_ = socket.Close()
 		}(socket)
@@ -160,10 +161,11 @@ func makeConnection(t *testing.T) (*websocket.Conn, int) {
 	defer server.Close()
 	socketUrl := fmt.Sprintf("ws%s", server.URL[4:])
 
-	socket, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
+	socket, httpResponse, err := websocket.DefaultDialer.Dial(socketUrl, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = httpResponse.Body.Close()
 
 	err = socket.WriteJSON(RpcRequest{
 		Rpc:    Rpc{JsonRpc: "2.0", Id: 42},

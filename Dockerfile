@@ -1,10 +1,16 @@
-FROM golang:1.20.3-alpine3.16 AS build
+FROM golang:1.27-alpine3.24 AS build
 
 WORKDIR /build
-COPY ./ /build
-RUN go build -o marlinraker -ldflags "-s -w" src/main.go
+COPY go.mod go.sum ./
+RUN go mod download
 
-FROM alpine:3.16
+COPY src ./src
+ARG VERSION=0.0.0-dev
+RUN CGO_ENABLED=0 go build -trimpath \
+    -ldflags "-s -w -X marlinraker/src/constants.Version=${VERSION}" \
+    -o marlinraker ./src
+
+FROM alpine:3.24
 
 RUN adduser -h /marlinraker -G dialout -u 1001 -D marlinraker
 WORKDIR /marlinraker
