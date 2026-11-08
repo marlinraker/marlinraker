@@ -6,6 +6,7 @@ import (
 	"marlinraker/src/printer_objects"
 	"math"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,7 @@ type positionWatcher struct {
 	last           time.Time
 	autoReport     bool
 	reportVelocity bool
+	stopOnce       sync.Once
 }
 
 func newPositionWatcher(printer *Printer) *positionWatcher {
@@ -31,6 +33,11 @@ func newPositionWatcher(printer *Printer) *positionWatcher {
 	if watcher.autoReport && !printer.IsPrusa {
 		<-printer.context.QueueGcode("M154 S1", true)
 	} else if !watcher.autoReport {
+		duration := time.Second
+		if watcher.reportVelocity {
+			duration = 200 * time.Millisecond
+		}
+		watcher.ticker = time.NewTicker(duration)
 		go watcher.runTimer()
 	}
 
@@ -79,24 +86,19 @@ func (watcher *positionWatcher) readPos(line string) {
 }
 
 func (watcher *positionWatcher) stop() {
-	if watcher.ticker != nil {
-		watcher.ticker.Stop()
-	}
-	close(watcher.closeCh)
+	watcher.stopOnce.Do(func() {
+		if watcher.ticker != nil {
+			watcher.ticker.Stop()
+		}
+		close(watcher.closeCh)
+	})
 }
 
 func (watcher *positionWatcher) runTimer() {
-
-	duration := time.Second
-	if watcher.reportVelocity {
-		duration = 200 * time.Millisecond
-	}
-
-	watcher.ticker = time.NewTicker(duration)
 	for {
 		select {
 		case <-watcher.closeCh:
-			break
+			return
 		case <-watcher.ticker.C:
 			watcher.tick()
 		}

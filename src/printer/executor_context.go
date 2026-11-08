@@ -1,6 +1,7 @@
 package printer
 
 import (
+	stdcontext "context"
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
@@ -22,6 +23,7 @@ type executorContext struct {
 	name            string
 	subContext      atomic.Pointer[executorContext]
 	closeCh         chan struct{}
+	closeOnce       sync.Once
 	commandCh       chan command
 	responseCh      chan string
 	responseBuilder strings.Builder
@@ -43,8 +45,50 @@ func newExecutorContext(printer *Printer, name string) *executorContext {
 	return context
 }
 
+// close stops the executor. Commands that are queued or in flight are released
+// with an empty response and commands queued afterward complete immediately.
 func (context *executorContext) close() {
-	close(context.closeCh)
+	context.closeOnce.Do(func() {
+		context.mu.Lock()
+		defer context.mu.Unlock()
+		close(context.closeCh)
+	})
+}
+
+func (context *executorContext) isClosed() bool {
+	select {
+	case <-context.closeCh:
+		return true
+	default:
+		return false
+	}
+}
+
+// drain releases all commands that are still waiting in the queue.
+func (context *executorContext) drain() {
+	for {
+		select {
+		case cmd := <-context.commandCh:
+			close(cmd.ch)
+			context.pending.Done()
+		default:
+			return
+		}
+	}
+}
+
+// await waits for the response of a queued command. It gives up when ctx is
+// done or when the executor context is closed, so callers never block forever
+// on a printer that stopped responding.
+func (context *executorContext) await(ctx stdcontext.Context, ch <-chan string) (string, error) {
+	select {
+	case response := <-ch:
+		return response, nil
+	case <-context.closeCh:
+		return "", errors.New("executor context closed")
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
 }
 
 func (context *executorContext) Name() string {
@@ -81,12 +125,22 @@ func (context *executorContext) work() {
 		select {
 		case <-context.closeCh:
 			log.WithField("context", context.name).Debugln("end")
+			context.drain()
 			return
 
 		case cmd := <-context.commandCh:
 			context.flush(cmd)
 
-			response := <-context.responseCh
+			var response string
+			select {
+			case response = <-context.responseCh:
+			case <-context.closeCh:
+				log.WithField("context", context.name).Debugln("end")
+				close(cmd.ch)
+				context.pending.Done()
+				context.drain()
+				return
+			}
 			context.responseBuilder = strings.Builder{}
 			select {
 			case cmd.ch <- response:
@@ -111,7 +165,7 @@ func (context *executorContext) QueueGcode(gcode string, silent bool) chan strin
 	}
 
 	gcode = parser.CleanGcode(gcode)
-	if gcode == "" {
+	if gcode == "" || context.isClosed() {
 		ch := make(chan string)
 		close(ch)
 		return ch
@@ -129,7 +183,7 @@ func (context *executorContext) QueueGcode(gcode string, silent bool) chan strin
 			context.commandCh <- cmd
 		}
 
-		responseCh := make(chan string)
+		responseCh := make(chan string, 1)
 		go func() {
 			response := make([]string, 0)
 			for _, ch := range chans {
@@ -167,7 +221,10 @@ func (context *executorContext) readLine(line string) {
 	context.responseBuilder.WriteString(line)
 
 	if strings.HasPrefix(line, "ok") {
-		context.responseCh <- context.responseBuilder.String()
+		select {
+		case context.responseCh <- context.responseBuilder.String():
+		case <-context.closeCh:
+		}
 	}
 }
 
@@ -195,7 +252,10 @@ func (context *executorContext) flush(cmd command) {
 		context.ReleaseSubContext()
 
 		go func() {
-			context.responseCh <- "ok"
+			select {
+			case context.responseCh <- "ok":
+			case <-context.closeCh:
+			}
 		}()
 		return
 	}
