@@ -131,6 +131,10 @@ func Unsubscribe(connection *connections.Connection) {
 		}
 		subscriptions[name] = subscription
 	}
+
+	lastEmittedMutex.Lock()
+	defer lastEmittedMutex.Unlock()
+	delete(lastEmitted, connection)
 }
 
 func getDiff(connection *connections.Connection, name string, result QueryResult) QueryResult {

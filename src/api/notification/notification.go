@@ -2,6 +2,7 @@ package notification
 
 import (
 	"encoding/json"
+	"errors"
 	"marlinraker/src/marlinraker/connections"
 )
 
@@ -32,13 +33,15 @@ func Publish(notification Notification) error {
 		return err
 	}
 
+	// Deliver to every connection even if writing to one of them fails, so a
+	// single dead socket cannot starve the remaining clients.
+	var errs []error
 	for _, connection := range connections.GetConnections() {
-		err = connection.WriteText(jsonBytes)
-		if err != nil {
-			return err
+		if err := connection.WriteText(jsonBytes); err != nil {
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func Send(connection *connections.Connection, notification Notification) error {

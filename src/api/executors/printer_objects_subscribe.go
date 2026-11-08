@@ -24,9 +24,7 @@ func PrinterObjectsSubscribeHttp(_ *connections.Connection, _ *http.Request, par
 		return nil, err
 	}
 
-	connection, found := lo.Find(connections.GetConnections(), func(connection connections.Connection) bool {
-		return connection.Id == int(connectionId)
-	})
+	connection, found := connections.FindConnection(int(connectionId))
 
 	if !found {
 		return nil, util.NewErrorf(400, "connection with id %d does not exist", connectionId)
@@ -45,7 +43,7 @@ func PrinterObjectsSubscribeHttp(_ *connections.Connection, _ *http.Request, par
 		}
 	}
 
-	return subscribe(&connection, subscriptions)
+	return subscribe(connection, subscriptions)
 }
 
 func PrinterObjectsSubscribeSocket(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
