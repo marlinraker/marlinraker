@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/samber/lo"
-	"gotest.tools/assert"
+	"gotest.tools/v3/assert"
 )
 
 func TestThrottledState(t *testing.T) {

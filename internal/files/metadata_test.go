@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/spf13/afero"
-	"gotest.tools/assert"
+	"gotest.tools/v3/assert"
 )
 
 func BenchmarkScanMetadata(b *testing.B) {

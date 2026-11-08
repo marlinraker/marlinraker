@@ -15,6 +15,6 @@ func NewError(code int, message string) error {
 	return &ExecutorError{message, code}
 }
 
-func NewErrorf(code int, format string, a ...interface{}) error {
+func NewErrorf(code int, format string, a ...any) error {
 	return NewError(code, fmt.Sprintf(format, a...))
 }

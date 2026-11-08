@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -9,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
+	"gotest.tools/v3/assert"
 
 	"github.com/marlinraker/marlinraker/internal/api/notification"
 	"github.com/marlinraker/marlinraker/internal/config"
@@ -41,7 +42,7 @@ func TestOctoPrint(t *testing.T) {
 	marlinraker.Config.Misc.OctoprintCompat = true
 
 	testOctoPrintEndpoint(t, "GET", "/api/version", nil, func(t *testing.T, result string) {
-		assert.JSONEq(t, `
+		assertJSONEq(t, `
 		{
             "server": "1.5.0",
             "api": "0.1",
@@ -51,7 +52,7 @@ func TestOctoPrint(t *testing.T) {
 	})
 
 	testOctoPrintEndpoint(t, "GET", "/api/server", nil, func(t *testing.T, result string) {
-		assert.JSONEq(t, `
+		assertJSONEq(t, `
 		{
             "server": "1.5.0",
             "safemode": "settings"
@@ -60,7 +61,7 @@ func TestOctoPrint(t *testing.T) {
 	})
 
 	testOctoPrintEndpoint(t, "GET", "/api/login", nil, func(t *testing.T, result string) {
-		assert.JSONEq(t, `
+		assertJSONEq(t, `
 		{
             "_is_external_client": false,
             "_login_mechanism": "apikey",
@@ -76,7 +77,7 @@ func TestOctoPrint(t *testing.T) {
 	})
 
 	testOctoPrintEndpoint(t, "GET", "/api/settings", nil, func(t *testing.T, result string) {
-		assert.JSONEq(t, `
+		assertJSONEq(t, `
 		{
             "plugins": {
                 "UltimakerFormatPackage": {
@@ -106,7 +107,7 @@ func TestOctoPrint(t *testing.T) {
 	})
 
 	testOctoPrintEndpoint(t, "GET", "/api/job", nil, func(t *testing.T, result string) {
-		assert.JSONEq(t, `
+		assertJSONEq(t, `
 		{
             "job": {
                 "file": {
@@ -131,7 +132,7 @@ func TestOctoPrint(t *testing.T) {
 	})
 
 	testOctoPrintEndpoint(t, "GET", "/api/printer", nil, func(t *testing.T, result string) {
-		assert.JSONEq(t, `
+		assertJSONEq(t, `
 		{
             "temperature": {
                 "tool0": {
@@ -163,7 +164,7 @@ func TestOctoPrint(t *testing.T) {
 	})
 
 	testOctoPrintEndpoint(t, "GET", "/api/printerprofiles", nil, func(t *testing.T, result string) {
-		assert.JSONEq(t, `
+		assertJSONEq(t, `
 		{
             "profiles": {
                 "_default": {
@@ -226,4 +227,13 @@ func TestOctoPrintFileUpload(t *testing.T) {
 			}
 			assert.Equal(t, string(contents), "this is a test\n")
 		})
+}
+
+// assertJSONEq asserts that both strings contain equivalent JSON documents.
+func assertJSONEq(t *testing.T, expected string, actual string) {
+	t.Helper()
+	var expectedValue, actualValue any
+	assert.NilError(t, json.Unmarshal([]byte(expected), &expectedValue), "expected value is not valid JSON")
+	assert.NilError(t, json.Unmarshal([]byte(actual), &actualValue), "actual value is not valid JSON")
+	assert.DeepEqual(t, actualValue, expectedValue)
 }

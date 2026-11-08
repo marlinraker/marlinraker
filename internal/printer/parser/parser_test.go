@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"gotest.tools/assert"
+	"gotest.tools/v3/assert"
 
 	"github.com/marlinraker/marlinraker/internal/files"
 )

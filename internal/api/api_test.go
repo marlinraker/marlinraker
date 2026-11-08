@@ -11,7 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
-	"gotest.tools/assert"
+	"gotest.tools/v3/assert"
 
 	"github.com/marlinraker/marlinraker/internal/api/executors"
 	"github.com/marlinraker/marlinraker/internal/api/notification"

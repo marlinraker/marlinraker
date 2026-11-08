@@ -6,7 +6,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
-	"gotest.tools/assert"
+	"gotest.tools/v3/assert"
 )
 
 func TestLoadConfig(t *testing.T) {

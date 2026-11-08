@@ -3,7 +3,7 @@ package procfs
 import (
 	"testing"
 
-	"gotest.tools/assert"
+	"gotest.tools/v3/assert"
 )
 
 func TestDistribution(t *testing.T) {

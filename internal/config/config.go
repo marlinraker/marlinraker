@@ -21,10 +21,10 @@ type Web struct {
 }
 
 type Serial struct {
-	Port                  string      `toml:"port"`
-	BaudRate              interface{} `toml:"baud_rate"`
-	MaxConnectionAttempts int         `toml:"max_connection_attempts"`
-	ConnectionTimeout     int         `toml:"connection_timeout"`
+	Port                  string `toml:"port"`
+	BaudRate              any    `toml:"baud_rate"`
+	MaxConnectionAttempts int    `toml:"max_connection_attempts"`
+	ConnectionTimeout     int    `toml:"connection_timeout"`
 }
 
 type Misc struct {

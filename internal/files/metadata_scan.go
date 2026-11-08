@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
-	"image/draw"
 	"image/png"
 	"io"
 	"math"
@@ -15,7 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nfnt/resize"
+	"golang.org/x/image/draw"
+
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -371,7 +371,8 @@ func resizeImage(data []byte, size int) ([]byte, error) {
 		newHeight = size * height / width
 	}
 
-	resizedImage := resize.Resize(uint(newWidth), uint(newHeight), inputImage, resize.Bilinear)
+	resizedImage := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+	draw.BiLinear.Scale(resizedImage, resizedImage.Bounds(), inputImage, inputImage.Bounds(), draw.Src, nil)
 
 	finalImage := image.NewRGBA(image.Rect(0, 0, size, size))
 	offsetX := (size - newWidth) / 2

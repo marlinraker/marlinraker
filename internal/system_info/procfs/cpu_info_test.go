@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"gotest.tools/assert"
+	"gotest.tools/v3/assert"
 )
 
 func TestCpuInfo(t *testing.T) {
