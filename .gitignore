@@ -1,3 +1,5 @@
 *.iml
 .idea
 marlinraker_files/
+/marlinraker
+dist/

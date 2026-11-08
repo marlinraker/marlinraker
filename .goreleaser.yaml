@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 builds:
-  - main: ./src/main.go
+  - main: ./cmd/marlinraker
     binary: marlinraker
     goos: [ linux ]
     goarch: [ arm, arm64 ]
@@ -11,7 +11,7 @@ builds:
     ldflags:
       - -s
       - -w
-      - -X {{ .ModulePath }}/src/constants.Version={{ .Version }}
+      - -X {{ .ModulePath }}/internal/constants.Version={{ .Version }}
     env:
       - CGO_ENABLED=0
 

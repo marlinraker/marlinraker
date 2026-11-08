@@ -1,4 +1,4 @@
-module marlinraker
+module github.com/marlinraker/marlinraker
 
 go 1.26.0
 
@@ -11,17 +11,15 @@ require (
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/rs/cors v1.11.1
 	github.com/samber/lo v1.53.0
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/afero v1.15.0
-	github.com/stretchr/testify v1.12.1
 	github.com/tidwall/gjson v1.20.1
 	github.com/tidwall/sjson v1.2.7
 	go.bug.st/serial v1.8.0
-	golang.org/x/exp v0.0.0-20261106192419-47ce03d25ef0
-	gotest.tools v2.2.0+incompatible
+	golang.org/x/image v0.47.0
+	gotest.tools/v3 v3.5.2
 )
 
 require (
@@ -33,7 +31,6 @@ require (
 	github.com/huandu/xstrings v1.6.3 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/shopspring/decimal v1.6.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
