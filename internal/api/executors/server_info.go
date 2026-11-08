@@ -35,7 +35,7 @@ func ServerInfo(*connections.Connection, *http.Request, Params) (any, error) {
 		Warnings:                  []string{},
 		WebsocketCount:            len(connections.GetConnections()),
 		MissingKlippyRequirements: []string{},
-		MoonrakerVersion:          constants.Version,
+		MoonrakerVersion:          constants.MoonrakerVersion(),
 		ApiVersion:                constants.ApiVersion,
 		ApiVersionString:          constants.ApiVersionString,
 		Type:                      "marlinraker",
