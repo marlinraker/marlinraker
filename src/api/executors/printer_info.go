@@ -32,9 +32,10 @@ func PrinterInfo(*connections.Connection, *http.Request, Params) (any, error) {
 		return nil, err
 	}
 
+	state, stateMessage := marlinraker.GetState()
 	return PrinterInfoResult{
-		State:           marlinraker.State,
-		StateMessage:    marlinraker.StateMessage,
+		State:           state,
+		StateMessage:    stateMessage,
 		Hostname:        hostname,
 		SoftwareVersion: constants.Version,
 		CpuInfo:         systemInfo.CpuInfo.CpuDesc,

@@ -47,7 +47,7 @@ func TestApi(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	marlinraker.State = marlinraker.Ready
+	marlinraker.SetState(marlinraker.Ready, "")
 	marlinraker.Config = config.DefaultConfig()
 	notification.Testing = true
 
@@ -302,9 +302,10 @@ func TestApi(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			state, stateMessage := marlinraker.GetState()
 			assert.DeepEqual(t, result, &executors.PrinterInfoResult{
-				State:           marlinraker.State,
-				StateMessage:    marlinraker.StateMessage,
+				State:           state,
+				StateMessage:    stateMessage,
 				Hostname:        hostname,
 				SoftwareVersion: constants.Version,
 				CpuInfo:         systemInfo.CpuInfo.CpuDesc,

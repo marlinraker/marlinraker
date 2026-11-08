@@ -8,9 +8,10 @@ import (
 )
 
 func PrinterPrintResume(*connections.Connection, *http.Request, Params) (any, error) {
-	if marlinraker.Printer == nil {
+	printer := marlinraker.GetPrinter()
+	if printer == nil {
 		return nil, util.NewError(500, "printer is not online")
 	}
-	<-marlinraker.Printer.MainExecutorContext().QueueGcode("RESUME", true)
+	<-printer.MainExecutorContext().QueueGcode("RESUME", true)
 	return "ok", nil
 }

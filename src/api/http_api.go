@@ -106,7 +106,11 @@ func handleFileDownload(writer http.ResponseWriter, request *http.Request) error
 		http.ServeFile(writer, request, diskPath)
 
 	default:
-		diskPath := filepath.Join(files.DataDir, util.SanitizePath(path))
+		if _, ok := fileRootOf(request.URL.Path); !ok {
+			http.NotFound(writer, request)
+			return nil
+		}
+		diskPath := filepath.Join(files.DataDir, path)
 		http.ServeFile(writer, request, diskPath)
 	}
 	return nil

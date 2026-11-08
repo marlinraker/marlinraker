@@ -9,7 +9,8 @@ import (
 )
 
 func PrinterPrintStart(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
-	if marlinraker.Printer == nil {
+	printer := marlinraker.GetPrinter()
+	if printer == nil {
 		return nil, util.NewError(500, "printer is not online")
 	}
 
@@ -18,6 +19,6 @@ func PrinterPrintStart(_ *connections.Connection, _ *http.Request, params Params
 		return nil, err
 	}
 
-	<-marlinraker.Printer.MainExecutorContext().QueueGcode("SDCARD_PRINT_FILE FILENAME="+strconv.Quote(fileName), true)
+	<-printer.MainExecutorContext().QueueGcode("SDCARD_PRINT_FILE FILENAME="+strconv.Quote(fileName), true)
 	return "ok", nil
 }

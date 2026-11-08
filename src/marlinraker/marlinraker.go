@@ -10,6 +10,8 @@ import (
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/scanner"
 	"marlinraker/src/system_info"
+	"sync"
+	"sync/atomic"
 )
 
 type KlippyState string
@@ -22,13 +24,31 @@ const (
 )
 
 var (
-	State           = Shutdown
-	StateMessage    string
 	Config          *config.Config
 	KlipperSettings map[string]any
 	KlipperConfig   map[string]any
-	Printer         *printer.Printer
+
+	stateMutex   sync.RWMutex
+	state        = Shutdown
+	stateMessage string
+
+	currentPrinter atomic.Pointer[printer.Printer]
+	// connectMutex is held for the whole lifetime of a connection attempt and
+	// the resulting printer connection.
+	connectMutex sync.Mutex
 )
+
+// GetState returns the current Klippy state and its message.
+func GetState() (KlippyState, string) {
+	stateMutex.RLock()
+	defer stateMutex.RUnlock()
+	return state, stateMessage
+}
+
+// GetPrinter returns the connected printer or nil if no printer is connected.
+func GetPrinter() *printer.Printer {
+	return currentPrinter.Load()
+}
 
 func Init(cfg *config.Config) {
 	log.Printf("Starting Marlinraker %s", constants.Version)
@@ -48,19 +68,20 @@ func Init(cfg *config.Config) {
 	go Connect()
 }
 
-func SetState(state KlippyState, message string) {
-	State = state
-	StateMessage = message
+func SetState(newState KlippyState, message string) {
+	stateMutex.Lock()
+	state, stateMessage = newState, message
+	stateMutex.Unlock()
 
-	switch state {
+	switch newState {
 	case Error:
 		log.Errorln(message)
 	default:
 		log.Println(message)
 	}
 
-	if state == Ready || state == Shutdown {
-		notify := notification.New("notify_klippy_"+string(state), []any{})
+	if newState == Ready || newState == Shutdown {
+		notify := notification.New("notify_klippy_"+string(newState), []any{})
 		if err := notification.Publish(notify); err != nil {
 			log.Errorf("Failed to public notification: %v", err)
 		}
@@ -71,11 +92,35 @@ func SetState(state KlippyState, message string) {
 	}
 }
 
+// Connect connects to the printer unless a connection attempt is already
+// running or a printer is already connected. It returns once the printer
+// disconnects.
 func Connect() {
-
-	if State != Error && State != Shutdown {
+	if !connectMutex.TryLock() {
 		return
 	}
+	defer connectMutex.Unlock()
+	connect()
+}
+
+// Reconnect disconnects the current printer, if any, and connects again in
+// the background.
+func Reconnect() error {
+	if p := GetPrinter(); p != nil {
+		if err := p.Disconnect(); err != nil {
+			return err
+		}
+	}
+	go func() {
+		// Wait for the previous connection to be torn down.
+		connectMutex.Lock()
+		defer connectMutex.Unlock()
+		connect()
+	}()
+	return nil
+}
+
+func connect() {
 
 	SetState(Startup, "Connecting to printer...")
 
@@ -99,21 +144,20 @@ func Connect() {
 
 	log.Printf("Using port %s @ %d", port, baudRateInt)
 
-	var err error
-	Printer, err = printer.New(Config, port, baudRateInt)
+	p, err := printer.New(Config, port, baudRateInt)
 	if err != nil {
 		SetState(Error, "Error: "+err.Error())
-		Printer = nil
 		return
 	}
 
+	currentPrinter.Store(p)
 	SetState(Ready, "Printer is ready")
-	<-Printer.CloseCh
+	<-p.CloseCh
+	currentPrinter.Store(nil)
 	temp_store.Reset()
-	if Printer.Error != nil {
-		SetState(Error, Printer.Error.Error())
+	if err := p.GetError(); err != nil {
+		SetState(Error, err.Error())
 	} else {
 		SetState(Shutdown, "Disconnected from printer")
 	}
-	Printer = nil
 }

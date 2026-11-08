@@ -8,9 +8,10 @@ import (
 )
 
 func PrinterPrintCancel(*connections.Connection, *http.Request, Params) (any, error) {
-	if marlinraker.Printer == nil {
+	printer := marlinraker.GetPrinter()
+	if printer == nil {
 		return nil, util.NewError(500, "printer is not online")
 	}
-	<-marlinraker.Printer.MainExecutorContext().QueueGcode("CANCEL_PRINT", true)
+	<-printer.MainExecutorContext().QueueGcode("CANCEL_PRINT", true)
 	return "ok", nil
 }

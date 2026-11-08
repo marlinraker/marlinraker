@@ -13,6 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -24,26 +27,30 @@ var (
 
 func Init() error {
 
+	mu.Lock()
+	defer mu.Unlock()
+
 	dbFile = filepath.Join(files.DataDir, "db.json")
-	file, err := files.Fs.OpenFile(dbFile, os.O_CREATE|os.O_RDWR, 0755)
-	if err != nil {
-		return fmt.Errorf("failed to open database file: %w", err)
+	jsonBytes, err := afero.ReadFile(files.Fs, dbFile)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to read database file: %w", err)
 	}
 
-	jsonBytes, err := afero.ReadAll(file)
-	if err != nil {
-		return fmt.Errorf("failed to read database file: %w", err)
+	if len(jsonBytes) > 0 && !gjson.ValidBytes(jsonBytes) {
+		// Keep the broken file for manual recovery but do not refuse to start.
+		backup := fmt.Sprintf("%s.corrupt-%d", dbFile, time.Now().Unix())
+		log.Errorf("Database file %s is malformed, moving it to %s and starting with an empty database", dbFile, backup)
+		if err := files.Fs.Rename(dbFile, backup); err != nil {
+			return fmt.Errorf("failed to move malformed database file: %w", err)
+		}
+		jsonBytes = nil
 	}
 
 	if len(jsonBytes) == 0 {
 		jsonBytes = []byte("{}")
-		if _, err = file.Write(jsonBytes); err != nil {
+		if err := files.WriteFileAtomic(dbFile, jsonBytes, 0644); err != nil {
 			return fmt.Errorf("failed to write database file: %w", err)
 		}
-	}
-
-	if !gjson.ValidBytes(jsonBytes) {
-		return errors.New("malformed db.json")
 	}
 
 	json = string(jsonBytes)
@@ -96,7 +103,7 @@ func PostItem(namespace string, key string, value any, internal bool) (any, erro
 		return nil, fmt.Errorf("failed to set value: %w", err)
 	}
 
-	if err := afero.WriteFile(files.Fs, dbFile, []byte(json), 0755); err != nil {
+	if err := files.WriteFileAtomic(dbFile, []byte(json), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write database file: %w", err)
 	}
 	return value, nil
@@ -123,7 +130,7 @@ func DeleteItem(namespace string, key string, internal bool) (any, error) {
 		}
 	}
 
-	if err := afero.WriteFile(files.Fs, dbFile, []byte(json), 0755); err != nil {
+	if err := files.WriteFileAtomic(dbFile, []byte(json), 0644); err != nil {
 		return nil, err
 	}
 	return value, nil

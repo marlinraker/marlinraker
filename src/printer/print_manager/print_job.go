@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -20,8 +21,11 @@ type printJob struct {
 	manager        *PrintManager
 	fileName       string
 	filePath       string
+	pauseMutex     sync.Mutex // guards pauseCh
 	pauseCh        chan struct{}
+	stateMutex     sync.Mutex // serializes pause and resume
 	cancelCh       chan struct{}
+	isCancelled    atomic.Bool
 	isPaused       atomic.Bool
 	isStarted      atomic.Bool
 	hasEnded       atomic.Bool
@@ -128,7 +132,7 @@ func (job *printJob) nextLine(line string) (bool, error) {
 	}
 
 	select {
-	case <-job.pauseCh:
+	case <-job.getPauseCh():
 	case <-job.cancelCh:
 		return true, nil
 	}
@@ -136,10 +140,20 @@ func (job *printJob) nextLine(line string) (bool, error) {
 	return false, nil
 }
 
+func (job *printJob) getPauseCh() chan struct{} {
+	job.pauseMutex.Lock()
+	defer job.pauseMutex.Unlock()
+	return job.pauseCh
+}
+
 func (job *printJob) pause(context shared.ExecutorContext) bool {
+	job.stateMutex.Lock()
+	defer job.stateMutex.Unlock()
 	if !job.isPaused.Load() {
 		job.isPaused.Store(true)
+		job.pauseMutex.Lock()
 		job.pauseCh = make(chan struct{})
+		job.pauseMutex.Unlock()
 		job.waitForPrintMoves(context)
 		now := time.Now()
 		job.printDuration.Do(func(duration time.Duration) time.Duration {
@@ -152,10 +166,12 @@ func (job *printJob) pause(context shared.ExecutorContext) bool {
 }
 
 func (job *printJob) resume(context shared.ExecutorContext) bool {
+	job.stateMutex.Lock()
+	defer job.stateMutex.Unlock()
 	if job.isPaused.Load() {
 		job.waitForPrintMoves(context)
 		job.isPaused.Store(false)
-		close(job.pauseCh)
+		close(job.getPauseCh())
 		job.lastResumeTime.Store(time.Now())
 		job.manager.setState("printing")
 		return true
@@ -164,7 +180,7 @@ func (job *printJob) resume(context shared.ExecutorContext) bool {
 }
 
 func (job *printJob) cancel(context shared.ExecutorContext) bool {
-	if job.hasEnded.Load() || !job.isStarted.Load() {
+	if job.hasEnded.Load() || !job.isStarted.Load() || !job.isCancelled.CompareAndSwap(false, true) {
 		return false
 	}
 	close(job.cancelCh)

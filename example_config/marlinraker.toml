@@ -2,7 +2,11 @@
 
 [web]
 port = 7125
-cors_domains = []
+# Browser origins that may use the API, in addition to pages served from the
+# same host as Marlinraker. Patterns without "://" match the hostname only,
+# "*" is a wildcard. Use ["*"] to allow every origin (not recommended: any web
+# page you visit could then control your printer).
+cors_domains = ["*.lan", "*.local", "*://my.mainsail.xyz", "*://app.fluidd.xyz"]
 
 [serial]
 port = "auto"

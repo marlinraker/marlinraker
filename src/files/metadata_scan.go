@@ -297,7 +297,7 @@ func ScanMetadata(fileName string) (*Metadata, error) {
 			log.Errorf("Failed to create directory %q: %v", filepath.Dir(diskPath), err)
 			break
 		}
-		if err := afero.WriteFile(Fs, diskPath, data.bytes, 0755); err != nil {
+		if err := afero.WriteFile(Fs, diskPath, data.bytes, 0644); err != nil {
 			log.Errorf("Failed to write thumbnail %q: %v", diskPath, err)
 		}
 		metadata.Thumbnails = append(metadata.Thumbnails, Thumbnail{

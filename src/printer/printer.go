@@ -17,6 +17,7 @@ import (
 	"marlinraker/src/shared"
 	"marlinraker/src/util"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -32,9 +33,9 @@ type Printer struct {
 	PrintManager       *print_manager.PrintManager
 	MacroManager       *macros.MacroManager
 	GcodeState         *GcodeState
-	Error              error
+	err                atomic.Pointer[error]
 	config             *config.Config
-	context            *executorContext
+	context            atomic.Pointer[executorContext]
 	path               string
 	port               serial.Port
 	info               parser.PrinterInfo
@@ -92,8 +93,25 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 	return printer, nil
 }
 
+// GetError returns the error that caused the printer to disconnect, if any.
+func (printer *Printer) GetError() error {
+	if err := printer.err.Load(); err != nil {
+		return *err
+	}
+	return nil
+}
+
+func (printer *Printer) setError(err error) {
+	printer.err.Store(&err)
+}
+
 func (printer *Printer) MainExecutorContext() shared.ExecutorContext {
-	return printer.context
+	return printer.ctx()
+}
+
+// ctx returns the executor context that currently owns the serial connection.
+func (printer *Printer) ctx() *executorContext {
+	return printer.context.Load()
 }
 
 func (printer *Printer) Disconnect() error {
@@ -106,7 +124,7 @@ func (printer *Printer) Disconnect() error {
 }
 
 func (printer *Printer) EmergencyStop() {
-	<-printer.context.QueueGcode("M112", true)
+	<-printer.ctx().QueueGcode("M112", true)
 }
 
 func (printer *Printer) tryToConnect() error {
@@ -125,15 +143,15 @@ func (printer *Printer) tryToConnect() error {
 }
 
 func (printer *Printer) handshake(attempt int) error {
-	printer.context = newExecutorContext(printer, fmt.Sprintf("handshake%d", attempt))
-	defer printer.context.close()
+	printer.context.Store(newExecutorContext(printer, fmt.Sprintf("handshake%d", attempt)))
+	defer printer.ctx().close()
 
 	timeout := time.Duration(printer.config.Serial.ConnectionTimeout) * time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	for {
-		response, err := printer.context.await(ctx, printer.context.QueueGcode("M115", true))
+		response, err := printer.ctx().await(ctx, printer.ctx().QueueGcode("M115", true))
 		if err != nil {
 			return errors.New("printer handshake took too long")
 		}
@@ -172,13 +190,13 @@ func (printer *Printer) readPort() {
 func (printer *Printer) cleanup() {
 	// The port is closed at this point, so nothing will answer pending commands anymore.
 	// Closing the context releases everyone waiting for a response.
-	if printer.context != nil {
-		printer.context.close()
+	if ctx := printer.ctx(); ctx != nil {
+		ctx.close()
 	}
 	for _, watcher := range printer.watchers.Load() {
 		watcher.stop()
 	}
-	printer.PrintManager.Cleanup(printer.context)
+	printer.PrintManager.Cleanup(printer.ctx())
 	printer.MacroManager.Cleanup()
 	printer_objects.UnregisterObject("toolhead")
 	printer_objects.UnregisterObject("motion_report")
@@ -187,7 +205,7 @@ func (printer *Printer) cleanup() {
 
 func (printer *Printer) setup() error {
 
-	printer.context = newExecutorContext(printer, "main")
+	printer.context.Store(newExecutorContext(printer, "main"))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -205,13 +223,13 @@ func (printer *Printer) setup() error {
 		if !printer.config.Printer.Gcode.ReportVelocity {
 			c |= 1 << 2
 		}
-		if _, err := printer.context.await(ctx, printer.context.QueueGcode(fmt.Sprintf("M155 S1 C%d", c), true)); err != nil {
+		if _, err := printer.ctx().await(ctx, printer.ctx().QueueGcode(fmt.Sprintf("M155 S1 C%d", c), true)); err != nil {
 			return timeoutErr
 		}
 	}
 
 	for {
-		response, err := printer.context.await(ctx, printer.context.QueueGcode("M503", true))
+		response, err := printer.ctx().await(ctx, printer.ctx().QueueGcode("M503", true))
 		if err != nil {
 			return timeoutErr
 		}
@@ -240,7 +258,7 @@ func (printer *Printer) setup() error {
 func (printer *Printer) handleRequestLine(line string) {
 	switch {
 	case parser.M112.MatchString(line):
-		printer.Error = errors.New("emergency stop")
+		printer.setError(errors.New("emergency stop"))
 		if err := printer.Disconnect(); err != nil {
 			log.Errorf("Failed updating state: %v", err)
 		}
@@ -259,13 +277,13 @@ func (printer *Printer) handleResponseLine(line string) bool {
 		switch action {
 		case "cancel":
 			log.Println("Canceling print")
-			_ = printer.context.QueueGcode("CANCEL_PRINT", true)
+			_ = printer.ctx().QueueGcode("CANCEL_PRINT", true)
 		case "pause":
 			log.Println("Pausing print")
-			_ = printer.context.QueueGcode("PAUSE", true)
+			_ = printer.ctx().QueueGcode("PAUSE", true)
 		case "resume":
 			log.Println("Resuming print")
-			_ = printer.context.QueueGcode("RESUME", true)
+			_ = printer.ctx().QueueGcode("RESUME", true)
 		}
 		return true
 	}
@@ -308,8 +326,8 @@ func (printer *Printer) readLine(line string) {
 	if printer.handleResponseLine(line) {
 		return
 	}
-	if printer.context != nil {
-		printer.context.readLine(line)
+	if ctx := printer.ctx(); ctx != nil {
+		ctx.readLine(line)
 	}
 }
 

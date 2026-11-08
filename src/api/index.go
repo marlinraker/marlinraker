@@ -43,12 +43,13 @@ func handleIndex(writer http.ResponseWriter, request *http.Request) error {
 	writer.Header().Set("Content-Type", "text/html")
 	writer.WriteHeader(200)
 
+	state, _ := marlinraker.GetState()
 	return indexTemplate.Execute(writer, templateData{
 		Hostname:       hostname,
 		RequestIP:      getAddress(request),
 		Version:        constants.Version,
 		WebsocketCount: len(connections.GetConnections()),
-		State:          marlinraker.State,
+		State:          state,
 		Arch:           info.CpuInfo.Processor,
 		Os:             info.Distribution.Name,
 		CPU:            info.CpuInfo.CpuDesc,
