@@ -7,11 +7,8 @@ import (
 )
 
 func PrinterFirmwareRestart(*connections.Connection, *http.Request, Params) (any, error) {
-	if marlinraker.Printer != nil {
-		if err := marlinraker.Printer.Disconnect(); err != nil {
-			return nil, err
-		}
+	if err := marlinraker.Reconnect(); err != nil {
+		return nil, err
 	}
-	go marlinraker.Connect()
 	return "ok", nil
 }

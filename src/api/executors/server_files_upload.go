@@ -1,6 +1,7 @@
 package executors
 
 import (
+	log "github.com/sirupsen/logrus"
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
@@ -23,6 +24,12 @@ func ServerFilesUpload(_ *connections.Connection, request *http.Request, _ Param
 	if err != nil {
 		return nil, err
 	}
+	// ReadForm spills large files to temporary files on disk
+	defer func() {
+		if err := form.RemoveAll(); err != nil {
+			log.Errorf("Failed to remove temporary upload files: %v", err)
+		}
+	}()
 
 	root := "gcodes"
 	if values := form.Value["root"]; len(values) > 0 {
@@ -63,11 +70,11 @@ func ServerFilesUpload(_ *connections.Connection, request *http.Request, _ Param
 
 	if startPrint {
 		printStarted := false
-		if marlinraker.Printer != nil {
+		if printer := marlinraker.GetPrinter(); printer != nil {
 			fileName := filepath.Join(path, headers[0].Filename)
-			printStarted = marlinraker.Printer.PrintManager.CanPrint(fileName)
+			printStarted = printer.PrintManager.CanPrint(fileName)
 			if printStarted {
-				<-marlinraker.Printer.MainExecutorContext().QueueGcode("SDCARD_PRINT_FILE FILENAME="+strconv.Quote(fileName), true)
+				<-printer.MainExecutorContext().QueueGcode("SDCARD_PRINT_FILE FILENAME="+strconv.Quote(fileName), true)
 			}
 		}
 		action.PrintStarted = &printStarted

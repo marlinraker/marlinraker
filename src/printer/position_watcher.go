@@ -31,7 +31,7 @@ func newPositionWatcher(printer *Printer) *positionWatcher {
 	}
 
 	if watcher.autoReport && !printer.IsPrusa {
-		<-printer.context.QueueGcode("M154 S1", true)
+		<-printer.ctx().QueueGcode("M154 S1", true)
 	} else if !watcher.autoReport {
 		duration := time.Second
 		if watcher.reportVelocity {
@@ -110,6 +110,6 @@ func (watcher *positionWatcher) tick() {
 		// prevent stuttering while printing
 		return
 	}
-	response := <-watcher.printer.context.QueueGcode("M114 R", true)
+	response := <-watcher.printer.ctx().QueueGcode("M114 R", true)
 	watcher.readPos(response)
 }

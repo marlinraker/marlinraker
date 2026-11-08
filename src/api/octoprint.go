@@ -185,7 +185,7 @@ func handleOctoPrint(writer http.ResponseWriter, request *http.Request) error {
 
 func handleApiPrinterCommand(request *http.Request) (any, error) {
 
-	printer := marlinraker.Printer
+	printer := marlinraker.GetPrinter()
 	if printer == nil {
 		return nil, errors.New("printer not connected")
 	}

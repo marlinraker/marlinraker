@@ -24,9 +24,10 @@ type ServerInfoResult struct {
 }
 
 func ServerInfo(*connections.Connection, *http.Request, Params) (any, error) {
+	state, _ := marlinraker.GetState()
 	return ServerInfoResult{
 		KlippyConnected:           true,
-		KlippyState:               string(marlinraker.State),
+		KlippyState:               string(state),
 		Components:                []string{"server", "file_manager", "machine", "database", "data_store", "proc_stats", "history"},
 		FailedComponents:          []string{},
 		RegisteredDirectories:     files.GetRegisteredDirectories(),

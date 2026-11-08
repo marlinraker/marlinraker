@@ -199,7 +199,7 @@ func TestOctoPrintFileUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	marlinraker.State = marlinraker.Ready
+	marlinraker.SetState(marlinraker.Ready, "")
 	marlinraker.Config = config.DefaultConfig()
 	notification.Testing = true
 
