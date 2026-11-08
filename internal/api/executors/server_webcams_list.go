@@ -4,15 +4,17 @@ import (
 	"net/http"
 
 	"github.com/marlinraker/marlinraker/internal/marlinraker/connections"
+	"github.com/marlinraker/marlinraker/internal/webcams"
 )
 
 type ServerWebcamsListResult struct {
-	// TODO
-	Webcams []any `json:"webcams"`
+	Webcams []webcams.Webcam `json:"webcams"`
 }
 
 func ServerWebcamsList(*connections.Connection, *http.Request, Params) (any, error) {
-	return ServerWebcamsListResult{
-		Webcams: []any{},
-	}, nil
+	list, err := webcams.List()
+	if err != nil {
+		return nil, err
+	}
+	return ServerWebcamsListResult{Webcams: list}, nil
 }

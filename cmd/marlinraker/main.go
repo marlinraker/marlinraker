@@ -17,6 +17,7 @@ import (
 	"github.com/marlinraker/marlinraker/internal/config"
 	"github.com/marlinraker/marlinraker/internal/database"
 	"github.com/marlinraker/marlinraker/internal/files"
+	"github.com/marlinraker/marlinraker/internal/history"
 	"github.com/marlinraker/marlinraker/internal/logger"
 	"github.com/marlinraker/marlinraker/internal/marlinraker"
 	"github.com/marlinraker/marlinraker/internal/marlinraker/connections"
@@ -77,6 +78,11 @@ func run() int {
 
 	if err := database.Init(); err != nil {
 		log.Errorf("Unable to initialize database: %v", err)
+		return 1
+	}
+
+	if err := history.Init(); err != nil {
+		log.Errorf("Unable to load print history: %v", err)
 		return 1
 	}
 
