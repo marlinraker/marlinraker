@@ -313,7 +313,7 @@ func (printer *Printer) handleResponseLine(line string) bool {
 func (printer *Printer) executeEmergencyCommand(gcode string) bool {
 	if printer.hasEmergencyParser && parser.IsEmergencyCommand(gcode) {
 		log.Debugf("emergency: %s", gcode)
-		if _, err := printer.port.Write([]byte(fmt.Sprintln(gcode))); err != nil {
+		if _, err := fmt.Fprintln(printer.port, gcode); err != nil {
 			log.Errorf("Failed writing to printer port: %v", err)
 		}
 		printer.handleRequestLine(gcode)

@@ -3,6 +3,7 @@ package print_manager
 import (
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"marlinraker/src/files"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
@@ -42,7 +43,9 @@ func NewPrintManager(printer shared.Printer) *PrintManager {
 				return
 			case <-manager.ticker.C:
 				if manager.isPrinting(manager.currentJob.Load(), manager.state.Load()) {
-					manager.emit()
+					if err := manager.emit(); err != nil {
+						log.Error(err)
+					}
 				}
 			}
 		}
@@ -75,7 +78,9 @@ func (manager *PrintManager) SelectFile(fileName string) error {
 		return err
 	}
 	manager.currentJob.Store(newPrintJob(manager, fileName))
-	manager.emit()
+	if err := manager.emit(); err != nil {
+		log.Error(err)
+	}
 	return nil
 }
 

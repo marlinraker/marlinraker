@@ -264,7 +264,7 @@ func (context *executorContext) flush(cmd command) {
 		WithField("port", context.printer.path).
 		Debugf("write: %s\n", cmd.gcode)
 
-	_, err := context.printer.port.Write([]byte(fmt.Sprintln(cmd.gcode)))
+	_, err := fmt.Fprintln(context.printer.port, cmd.gcode)
 	if err != nil {
 		log.Errorf("Failed writing to printer port: %v", err)
 	}

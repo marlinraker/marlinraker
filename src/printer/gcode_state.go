@@ -120,17 +120,17 @@ func (state *GcodeState) restore(context shared.ExecutorContext, restoreTo Gcode
 		restoreTo.IsAbsoluteCoordinate, restoreTo.IsAbsoluteExtrude
 
 	if state.SpeedFactor != restoreTo.SpeedFactor {
-		builder.WriteString(fmt.Sprintf("M220 S%d\n", restoreTo.SpeedFactor))
+		fmt.Fprintf(&builder, "M220 S%d\n", restoreTo.SpeedFactor)
 		state.SpeedFactor = restoreTo.SpeedFactor
 	}
 
 	if state.ExtrudeFactor != restoreTo.ExtrudeFactor {
-		builder.WriteString(fmt.Sprintf("M221 S%d\n", restoreTo.ExtrudeFactor))
+		fmt.Fprintf(&builder, "M221 S%d\n", restoreTo.ExtrudeFactor)
 		state.ExtrudeFactor = restoreTo.ExtrudeFactor
 	}
 
 	if state.Feedrate != restoreTo.Feedrate {
-		builder.WriteString(fmt.Sprintf("G0 F%d\n", int(restoreTo.Feedrate)))
+		fmt.Fprintf(&builder, "G0 F%d\n", int(restoreTo.Feedrate))
 		state.Feedrate = restoreTo.Feedrate
 	}
 
@@ -151,7 +151,7 @@ func (state *GcodeState) restore(context shared.ExecutorContext, restoreTo Gcode
 	}
 
 	if len(coords) > 0 {
-		builder.WriteString(fmt.Sprintf("G1 %s\n", strings.Join(coords, " ")))
+		fmt.Fprintf(&builder, "G1 %s\n", strings.Join(coords, " "))
 	}
 	state.Position = restoreTo.Position
 

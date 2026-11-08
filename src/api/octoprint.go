@@ -137,7 +137,8 @@ func handleOctoPrint(writer http.ResponseWriter, request *http.Request) error {
 		err    error
 	)
 
-	if method == "GET" {
+	switch method {
+	case http.MethodGet:
 		switch path {
 		case "/api/version":
 			result = apiVersionResult
@@ -155,7 +156,7 @@ func handleOctoPrint(writer http.ResponseWriter, request *http.Request) error {
 			result = apiPrinterProfilesResult
 		}
 
-	} else if method == "POST" {
+	case http.MethodPost:
 		switch path {
 		case "/api/files/local":
 			result, err = executors.ServerFilesUpload(nil, request, nil)

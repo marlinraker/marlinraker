@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/api/executors"
@@ -53,6 +54,8 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 	for {
 		_, message, err := socket.ReadMessage()
 		if err != nil {
+			// The client went away or sent an invalid frame; either way the connection is done.
+			log.Debugf("Websocket %d closed: %v", connection.Id, err)
 			break
 		}
 		log.Debugf("recv: %s", string(message))
@@ -81,7 +84,7 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 		if err != nil {
 			log.Errorf("Error while executing %s: %v", request.Method, err)
 			code := 500
-			if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
+			if executorError := (*util.ExecutorError)(nil); errors.As(err, &executorError) {
 				code = executorError.Code
 			}
 			err = connection.WriteJson(&RpcErrorResponse{
