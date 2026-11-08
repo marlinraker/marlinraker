@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -36,13 +37,15 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) error {
 		params[param] = value[0]
 	}
 
-	if request.Body != nil && request.ContentLength > 0 && request.Header.Get("Content-Type") == "application/json" {
-		bodyBytes, err := io.ReadAll(request.Body)
+	if request.Body != nil && request.ContentLength != 0 && isJsonContentType(request.Header.Get("Content-Type")) {
+		bodyBytes, err := io.ReadAll(http.MaxBytesReader(writer, request.Body, maxJsonBodySize))
 		if err != nil {
 			return err
 		}
-		if err := json.Unmarshal(bodyBytes, &params); err != nil {
-			return err
+		if len(bodyBytes) > 0 {
+			if err := json.Unmarshal(bodyBytes, &params); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -62,6 +65,14 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) error {
 
 	result, err := executor(nil, request, params)
 	return writeExecutorResponse(writer, method, url, result, err)
+}
+
+// maxJsonBodySize limits the size of JSON request bodies.
+const maxJsonBodySize = 16 << 20
+
+func isJsonContentType(contentType string) bool {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	return err == nil && mediaType == "application/json"
 }
 
 func writeExecutorResponse(writer http.ResponseWriter, method string, url string, result any, err error) error {

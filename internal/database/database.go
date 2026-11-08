@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	ReservedNamespaces = []string{"marlinraker", "moonraker", "gcode_metadata", "history"}
+	ReservedNamespaces = []string{"marlinraker", "moonraker", "gcode_metadata", "history", "webcams"}
 	dbFile             string
 	json               string
 	mu                 = &sync.RWMutex{}

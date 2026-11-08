@@ -145,14 +145,14 @@ func Move(source string, dest string) (MoveAction, error) {
 		return action, err
 	}
 
+	if !strings.Contains(sourceRoot.Permissions, "w") || !strings.Contains(destRoot.Permissions, "w") {
+		return action, util.NewError(403, "no write permissions")
+	}
+
 	sourceDiskPath, destDiskPath := filepath.Join(DataDir, source), filepath.Join(DataDir, dest)
 	err = Fs.Rename(sourceDiskPath, destDiskPath)
 	if err != nil {
 		return action, err
-	}
-
-	if !strings.Contains(sourceRoot.Permissions, "w") || !strings.Contains(destRoot.Permissions, "w") {
-		return action, errors.New("no write permissions")
 	}
 
 	stat, err := Fs.Stat(destDiskPath)
@@ -193,6 +193,117 @@ func Move(source string, dest string) (MoveAction, error) {
 
 	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
 	return action, err
+}
+
+type CopyAction struct {
+	Item   ActionItem `json:"item"`
+	Action string     `json:"action"`
+}
+
+// Copy copies a file or directory. Both paths start with the name of a file
+// root, e.g. "gcodes/benchy.gcode".
+func Copy(source string, dest string) (CopyAction, error) {
+
+	source, dest = strings.TrimPrefix(source, "/"), strings.TrimPrefix(dest, "/")
+	sourceRootName, sourceRelPath, _ := strings.Cut(source, "/")
+	destRootName, destRelPath, _ := strings.Cut(dest, "/")
+
+	if _, err := getRootByName(sourceRootName); err != nil {
+		return CopyAction{}, err
+	}
+	destRoot, err := getRootByName(destRootName)
+	if err != nil {
+		return CopyAction{}, err
+	}
+	if !strings.Contains(destRoot.Permissions, "w") {
+		return CopyAction{}, util.NewError(403, "no write permissions")
+	}
+	if sourceRelPath == "" || destRelPath == "" {
+		return CopyAction{}, util.NewError(400, "cannot copy a file root")
+	}
+
+	sourceDiskPath, destDiskPath := filepath.Join(DataDir, source), filepath.Join(DataDir, dest)
+	if destDiskPath == sourceDiskPath || strings.HasPrefix(destDiskPath, sourceDiskPath+string(filepath.Separator)) {
+		return CopyAction{}, util.NewError(400, "cannot copy a directory into itself")
+	}
+
+	sourceStat, err := Fs.Stat(sourceDiskPath)
+	if err != nil {
+		return CopyAction{}, util.NewErrorf(404, "%s does not exist", source)
+	}
+	if _, err := Fs.Stat(destDiskPath); err == nil {
+		return CopyAction{}, util.NewErrorf(400, "%s already exists", dest)
+	}
+
+	if sourceStat.IsDir() {
+		err = afero.Walk(Fs, sourceDiskPath, func(path string, info fs.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			relPath, err := filepath.Rel(sourceDiskPath, path)
+			if err != nil {
+				return err
+			}
+			target := filepath.Join(destDiskPath, relPath)
+			if info.IsDir() {
+				return Fs.MkdirAll(target, 0755)
+			}
+			return copyFile(path, target)
+		})
+	} else {
+		if err = Fs.MkdirAll(filepath.Dir(destDiskPath), 0755); err == nil {
+			err = copyFile(sourceDiskPath, destDiskPath)
+		}
+	}
+	if err != nil {
+		return CopyAction{}, fmt.Errorf("failed to copy %s to %s: %w", source, dest, err)
+	}
+
+	stat, err := Fs.Stat(destDiskPath)
+	if err != nil {
+		return CopyAction{}, err
+	}
+
+	action := CopyAction{
+		Item: ActionItem{
+			Root:        destRoot.Name,
+			Path:        destRelPath,
+			Modified:    float64(stat.ModTime().UnixMilli()) / 1000.0,
+			Size:        stat.Size(),
+			Permissions: destRoot.Permissions,
+		},
+		Action: "create_file",
+	}
+	if stat.IsDir() {
+		action.Action = "create_dir"
+		action.Item.Size = 0
+	}
+
+	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
+	return action, err
+}
+
+func copyFile(source string, dest string) (err error) {
+	sourceFile, err := Fs.Open(source)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = sourceFile.Close()
+	}()
+
+	destFile, err := Fs.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := destFile.Close(); err == nil {
+			err = closeErr
+		}
+	}()
+
+	_, err = io.Copy(destFile, sourceFile)
+	return err
 }
 
 func CreateArchive(dest string, items []string, compress bool) (ZipAction, error) {

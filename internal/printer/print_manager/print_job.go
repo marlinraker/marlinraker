@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/marlinraker/marlinraker/internal/files"
+	"github.com/marlinraker/marlinraker/internal/history"
 	"github.com/marlinraker/marlinraker/internal/printer/parser"
 	"github.com/marlinraker/marlinraker/internal/shared"
 	"github.com/marlinraker/marlinraker/internal/util"
@@ -39,6 +40,7 @@ type printJob struct {
 	endTime        util.ThreadSafe[time.Time]
 	printDuration  util.ThreadSafe[time.Duration]
 	ePosStart      util.ThreadSafe[float64]
+	historyID      string
 }
 
 func newPrintJob(manager *PrintManager, fileName string) *printJob {
@@ -81,6 +83,8 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 	job.printDuration.Store(0)
 	job.position.Store(0)
 	job.progress.Store(0)
+	job.ePosStart.Store(job.manager.printer.GetGcodeState().ExtrudedFilament())
+	job.historyID = history.JobStarted(job.fileName)
 
 	reader := bufio.NewReader(file)
 
@@ -208,6 +212,15 @@ func (job *printJob) finish(state string, context shared.ExecutorContext) {
 	if err := job.manager.setState(state); err != nil {
 		log.Error(err)
 	}
+
+	historyStatus := history.StatusCompleted
+	switch state {
+	case "cancelled":
+		historyStatus = history.StatusCancelled
+	case "error":
+		historyStatus = history.StatusError
+	}
+	history.JobFinished(job.historyID, historyStatus, job.getPrintTime(), job.getTotalTime(), job.getFilamentUsed())
 }
 
 func (job *printJob) waitForPrintMoves(context shared.ExecutorContext) {

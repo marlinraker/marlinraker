@@ -58,6 +58,24 @@ func (params Params) GetInt64(name string) (int64, bool) {
 	return 0, false
 }
 
+func (params Params) GetFloat64(name string) (float64, bool) {
+	value, exists := params[name]
+	if !exists {
+		return 0, false
+	}
+	switch value := value.(type) {
+	case float64:
+		return value, true
+	case int64:
+		return float64(value), true
+	default:
+		if value, err := strconv.ParseFloat(fmt.Sprintf("%v", value), 64); err == nil {
+			return value, true
+		}
+	}
+	return 0, false
+}
+
 func (params Params) RequireInt64(name string) (int64, error) {
 	value, exists := params.GetInt64(name)
 	if !exists {
