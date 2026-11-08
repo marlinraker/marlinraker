@@ -70,7 +70,7 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 	_, err = Fs.Stat(destPath)
 	existedBefore := err == nil
 
-	destFile, err := Fs.OpenFile(destPath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0755)
+	destFile, err := Fs.OpenFile(destPath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return FileUploadAction{}, err
 	}

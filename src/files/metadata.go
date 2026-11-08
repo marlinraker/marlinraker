@@ -160,7 +160,7 @@ func StoreMetadata(metadata *Metadata) error {
 
 	diskPath := getMetaDiskPath(metadata.FileName)
 
-	file, err := Fs.OpenFile(diskPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
+	file, err := Fs.OpenFile(diskPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}

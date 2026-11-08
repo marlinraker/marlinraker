@@ -68,7 +68,7 @@ func openLogFile() error {
 	}
 
 	logFilePath := filepath.Join(files.DataDir, "logs/marlinraker.log")
-	logFile, err = files.Fs.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
+	logFile, err = files.Fs.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}

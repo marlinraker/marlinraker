@@ -219,7 +219,7 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 	}
 
 	destDisk := filepath.Join(DataDir, rootName, path)
-	archive, err := Fs.OpenFile(destDisk, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
+	archive, err := Fs.OpenFile(destDisk, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return ZipAction{}, err
 	}

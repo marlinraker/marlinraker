@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/afero"
 	"gotest.tools/assert"
 	"marlinraker/src/files"
+	"strings"
 	"testing"
 )
 
@@ -22,8 +23,26 @@ func TestInit(t *testing.T) {
 	err = afero.WriteFile(files.Fs, "db.json", []byte("{invalid:json}"), 0755)
 	assert.NilError(t, err)
 
+	// A malformed database is moved aside instead of preventing startup
 	err = Init()
-	assert.Error(t, err, "malformed db.json")
+	assert.NilError(t, err)
+
+	content, err = afero.ReadFile(files.Fs, "db.json")
+	assert.NilError(t, err)
+	assert.Equal(t, string(content), "{}")
+
+	entries, err := afero.ReadDir(files.Fs, ".")
+	assert.NilError(t, err)
+	backups := 0
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "db.json.corrupt-") {
+			backups++
+			backup, err := afero.ReadFile(files.Fs, entry.Name())
+			assert.NilError(t, err)
+			assert.Equal(t, string(backup), "{invalid:json}")
+		}
+	}
+	assert.Equal(t, backups, 1)
 }
 
 func TestPostItem(t *testing.T) {
